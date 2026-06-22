@@ -30,7 +30,9 @@ checksum:
   name_template: "checksums.txt"
 
 release:
-  # owner/name auto-detected from `git remote origin` so forks work without edits.
+  github:
+    owner: acynmkigrow
+    name: acyn-go
   draft: false
   prerelease: auto
 

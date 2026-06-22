@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version tag, for example v1.0.4"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,13 +21,69 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
+          cache: false
+
+      - name: Verify agent module exists
+        run: |
+          test -f go.mod || { echo "go.mod missing"; exit 1; }
+          test -f main.go || { echo "main.go missing"; exit 1; }
+
+      - name: Tidy modules
+        run: go mod tidy
+
+      - name: Verify module files are committed
+        run: git diff --exit-code -- go.mod go.sum
+
+      - name: Build agent (sanity check)
+        run: go build -ldflags="-s -w" -o /tmp/acyn-go .
+
+      - name: Test agent
+        run: go test ./...
+
+      - name: Create release tag for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ inputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must look like v1.0.4"
+            exit 1
+          fi
+          git fetch --tags --force --quiet
+          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally. Pick a new version."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists on origin. Pick a new version."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "$VERSION"
+          git push origin "$VERSION"
+
+      - name: Checkout the release tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags --force
+          git checkout "refs/tags/${{ inputs.version }}"
+
+      - name: Release will run from pushed tag
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "Tag ${{ inputs.version }} was pushed. The tag-triggered workflow run will publish the GitHub Release."
+
       - uses: goreleaser/goreleaser-action@v6
+        if: github.event_name == 'push'
         with:
           distribution: goreleaser
-          version: latest
+          version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
