@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Family } from "@/lib/huawei-prompts";
 
 export type AgentInfo = {
@@ -13,15 +13,39 @@ export function PairingCard({
   device,
   onPair,
   onDisconnect,
+  initialHost,
+  initialPort,
+  initialCode,
+  autoPair,
 }: {
   status: "idle" | "pairing" | "connected" | "error";
   device: AgentInfo | null;
   onPair: (host: string, port: number, code: string) => void;
   onDisconnect: () => void;
+  initialHost?: string;
+  initialPort?: number;
+  initialCode?: string;
+  autoPair?: boolean;
 }) {
-  const [host, setHost] = useState("127.0.0.1");
-  const [port, setPort] = useState(17017);
-  const [code, setCode] = useState("");
+  const [host, setHost] = useState(initialHost || "127.0.0.1");
+  const [port, setPort] = useState(initialPort || 17017);
+  const [code, setCode] = useState(initialCode || "");
+  const [autoTried, setAutoTried] = useState(false);
+
+  // Re-sync if URL params arrive after mount
+  useEffect(() => {
+    if (initialHost) setHost(initialHost);
+    if (initialPort) setPort(initialPort);
+    if (initialCode) setCode(initialCode);
+  }, [initialHost, initialPort, initialCode]);
+
+  // Auto-pair from deep link once
+  useEffect(() => {
+    if (autoPair && !autoTried && code.length === 6 && status === "idle") {
+      setAutoTried(true);
+      onPair(host, port, code);
+    }
+  }, [autoPair, autoTried, code, status, host, port, onPair]);
 
   if (status === "connected" && device) {
     return (
@@ -50,7 +74,7 @@ export function PairingCard({
     <div className="rounded-2xl bg-white/[0.02] p-5">
       <div className="text-xs uppercase tracking-wider text-white/40 mb-3">Pair to local agent</div>
       <div className="text-xs text-white/50 mb-4 leading-relaxed">
-        Run <code className="text-primary">acyn-go serve</code> on the same network. Paste the 6-digit code it prints.
+        Run <code className="text-primary">acyn-go serve</code> on the same network. Paste the 6-digit code it prints, or click the pair link in your terminal to auto-fill.
       </div>
       <div className="grid grid-cols-2 gap-2">
         <input
