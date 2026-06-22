@@ -26,9 +26,7 @@ checksum:
   name_template: "checksums.txt"
 
 release:
-  github:
-    owner: acyninnovation
-    name: acyn-go
+  # owner/name auto-detected from `git remote origin` so forks work without edits.
   draft: false
   prerelease: auto
 
