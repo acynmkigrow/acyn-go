@@ -192,6 +192,7 @@ function ConsolePage() {
           {!paired && (
             <Wizard installed paired={paired} intentSent={intentSent} />
           )}
+          {paired && <DiscoverPanel onDiscover={discover} onConnect={connectDevice} />}
           <div className="rounded-2xl bg-white/[0.02] p-5">
             <div className="text-xs uppercase tracking-wider text-white/40 mb-3">Device family</div>
             <select
