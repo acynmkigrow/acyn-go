@@ -31,48 +31,65 @@
   --color-ring: var(--ring);
   --color-cyan-glow: var(--cyan-glow);
   --color-emerald-glow: var(--emerald-glow);
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
+/* GitHub Dark-inspired palette */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.85 0.18 195);
-  --primary-foreground: oklch(0.1 0 0);
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.2 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.78 0.2 160);
-  --accent-foreground: oklch(0.1 0 0);
-  --destructive: oklch(0.65 0.24 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.85 0.18 195);
-  --cyan-glow: oklch(0.85 0.18 195);
-  --emerald-glow: oklch(0.78 0.2 160);
+  --radius: 0.375rem;
+  --background: #0d1117;            /* canvas */
+  --foreground: #e6edf3;            /* fg.default */
+  --card: #161b22;                  /* canvas.subtle */
+  --card-foreground: #e6edf3;
+  --popover: #161b22;
+  --popover-foreground: #e6edf3;
+  --primary: #2f81f7;               /* accent.fg */
+  --primary-foreground: #ffffff;
+  --secondary: #21262d;             /* btn.bg */
+  --secondary-foreground: #e6edf3;
+  --muted: #161b22;
+  --muted-foreground: #8b949e;      /* fg.muted */
+  --accent: #238636;                /* success.emphasis */
+  --accent-foreground: #ffffff;
+  --destructive: #f85149;           /* danger.fg */
+  --destructive-foreground: #ffffff;
+  --border: #30363d;                /* border.default */
+  --input: #30363d;
+  --ring: #2f81f7;
+  --cyan-glow: #2f81f7;
+  --emerald-glow: #3fb950;
 }
 
 @layer base {
   * { border-color: var(--color-border); }
-  html, body { background-color: #0a0a0a; color: var(--color-foreground); }
-  body { font-family: var(--font-display); font-feature-settings: "ss01", "cv01"; }
-  code, pre { font-family: var(--font-mono); }
-  ::selection { background: oklch(0.85 0.18 195 / 0.35); color: white; }
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    font-family: var(--font-display);
+    font-feature-settings: "ss01", "cv11";
+  }
+  code, pre, kbd, samp { font-family: var(--font-mono); }
+  ::selection { background: rgba(56, 139, 253, 0.4); color: #fff; }
+
+  /* Fix native <select> dropdown option contrast across the app */
+  select option,
+  select optgroup {
+    background-color: #161b22;
+    color: #e6edf3;
+  }
 }
 
-@utility glow-cyan { filter: drop-shadow(0 20px 50px rgba(34, 211, 238, 0.18)); }
-@utility glow-emerald { filter: drop-shadow(0 20px 50px rgba(16, 185, 129, 0.18)); }
+/* Neutralized — kept as no-ops so existing classNames don't break */
+@utility glow-cyan { filter: none; }
+@utility glow-emerald { filter: none; }
 @utility text-gradient {
-  background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.65) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: var(--color-foreground);
 }

@@ -126,7 +126,7 @@ function ConsolePage() {
         toast.error(res.error);
         setMessages((prev) => [
           ...prev,
-          { id: asstId, role: "assistant", text: "Couldn't plan that.", plan: undefined },
+          { id: asstId, role: "assistant", text: res.error ?? "Couldn't plan that.", plan: undefined },
         ]);
       } else {
         setMessages((prev) => [...prev, { id: asstId, role: "assistant", text: value, plan: res.plan }]);

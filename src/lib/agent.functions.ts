@@ -30,7 +30,6 @@ export const planConfig = createServerFn({ method: "POST" })
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
     const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-3-flash-preview");
 
     const system = buildPrompt(data.family as Family);
     const userPrompt = [
@@ -41,39 +40,46 @@ export const planConfig = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join("\n\n");
 
-    try {
-      const { experimental_output } = await generateText({
-        model,
-        system,
-        prompt: userPrompt,
-        experimental_output: Output.object({ schema: PlanSchema }),
-      });
-      const plan = experimental_output as Plan;
-      const check = validateCommands(plan.commands, data.intent);
-      if (!check.ok) {
-        return {
-          plan: {
-            ...plan,
-            commands: [],
-            warning: `${plan.warning ? plan.warning + " " : ""}Blocked by safety validator: ${check.reason}`,
-            destructive: true,
-          },
-        } as const;
-      }
-      // Auto-append save only for Huawei dialects (HG/GPON/XPON/OLT/Switch use 'save').
-      // MikroTik auto-persists. Cisco's save ('write memory') is sent by the agent via SaveCmd.
-      const huaweiSave = ["hg", "gpon", "xpon", "olt", "switch"].includes(data.family);
-      if (plan.requires_save && plan.commands.length > 0 && huaweiSave) {
-        const last = plan.commands[plan.commands.length - 1].trim().toLowerCase();
-        if (last !== "save" && last !== "save y") {
-          plan.commands.push("save");
+    // Try primary model, then fall back if it errors on structured-output / state limits.
+    const modelIds = ["google/gemini-3-flash-preview", "google/gemini-2.5-flash"];
+    let lastErr: unknown = null;
+    for (const id of modelIds) {
+      try {
+        const { experimental_output } = await generateText({
+          model: gateway(id),
+          system,
+          prompt: userPrompt,
+          experimental_output: Output.object({ schema: PlanSchema }),
+        });
+        const plan = experimental_output as Plan;
+        const check = validateCommands(plan.commands, data.intent);
+        if (!check.ok) {
+          return {
+            plan: {
+              ...plan,
+              commands: [],
+              warning: `${plan.warning ? plan.warning + " " : ""}Blocked by safety validator: ${check.reason}`,
+              destructive: true,
+            },
+          } as const;
         }
+        const huaweiSave = ["hg", "gpon", "xpon", "olt", "switch"].includes(data.family);
+        if (plan.requires_save && plan.commands.length > 0 && huaweiSave) {
+          const last = plan.commands[plan.commands.length - 1].trim().toLowerCase();
+          if (last !== "save" && last !== "save y") {
+            plan.commands.push("save");
+          }
+        }
+        return { plan } as const;
+      } catch (err) {
+        lastErr = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/402/.test(msg)) return { error: "AI credits exhausted. Add credits in Lovable workspace settings." } as const;
+        if (/429/.test(msg)) return { error: "Rate limit hit. Wait a moment and try again." } as const;
+        // try next model
       }
-      return { plan } as const;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (/402/.test(msg)) return { error: "AI credits exhausted. Add credits in Lovable workspace settings." } as const;
-      if (/429/.test(msg)) return { error: "Rate limit hit. Wait a moment and try again." } as const;
-      return { error: `Planner failed: ${msg}` } as const;
     }
+    const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+    return { error: `Planner failed: ${msg}` } as const;
   });
+
