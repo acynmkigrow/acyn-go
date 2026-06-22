@@ -60,7 +60,7 @@ export const planConfig = createServerFn({ method: "POST" })
           },
         } as const;
       }
-      if (plan.requires_save && plan.commands.length > 0) {
+      if (plan.requires_save && plan.commands.length > 0 && data.family !== "mikrotik") {
         const last = plan.commands[plan.commands.length - 1].trim().toLowerCase();
         if (last !== "save" && last !== "save y") {
           plan.commands.push("save");
