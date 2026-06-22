@@ -1,34 +1,28 @@
-## Fix the installer 404
+## Plan
 
-Two things are wrong:
+1. **Pin the release tool instead of using `latest`**
+   - Replace GoReleaser Action `version: latest` with a fixed v2 release, removing the “using latest” warning and preventing future surprise breakage.
 
-1. **Hardcoded default repo** — `public/install.ps1` defaults to `acyninnovation/acyn-go`. Since `go.acyninnovation.com` now serves *your* deployment, the default should point at your fork `acynmkigrow/acyn-go`.
-2. **Bogus `v1.0.0` fallback** — when the GitHub API call fails (rate limit, no releases yet, network), the script silently falls back to tag `v1.0.0` and tries to download an asset that doesn't exist → the `Not Found` you saw. The API call most likely succeeded against `acyninnovation/acyn-go` and returned a tag, but that repo's release assets aren't named the way the script expects — either way the fallback hides the real problem.
+2. **Fix manual release tag flow**
+   - Make manual runs check both local and remote tags before creating one.
+   - Use the workflow input version consistently so GoReleaser releases the intended tag.
+   - Avoid pushing duplicate tags that can cause exit 128/1 failures.
 
-### Changes to `public/install.ps1`
+3. **Add real preflight checks before GoReleaser**
+   - Verify `agent/go.mod` exists.
+   - Run `go mod tidy` in `agent/`.
+   - Run `go test ./...` in `agent/` so broken agent code fails before packaging.
+   - Run `go build` for the main agent binary so the workflow proves the app compiles before release.
 
-- Change the default at the top from `'acyninnovation/acyn-go'` to `'acynmkigrow/acyn-go'`.
-- Remove the `v1.0.0` fallback. If the GitHub API call fails, print a clear error explaining how to override with `$env:ACYN_REPO` and exit. No silent guessing.
-- After resolving the tag, do a `HEAD` request on the asset URL first; if it 404s, print the exact asset name expected vs. what's on the release page and exit.
+4. **Harden GoReleaser config**
+   - Keep release assets named exactly how the installer expects, especially the Windows zip.
+   - Add `goamd64: v1` for maximum Windows compatibility.
+   - Keep version injection into `acyn-go --version`.
 
-### Changes to `agent/RELEASING.md` and `src/routes/release.tsx`
+5. **Update release docs / installer guidance only where needed**
+   - Make the release page/docs tell you to re-run with a new version like `v1.0.3` after a failed attempt.
+   - Keep the installer pointed at `acynmkigrow/acyn-go`.
 
-- Update the example `$env:ACYN_REPO` line to use `acynmkigrow/acyn-go` as the example, and clarify that the bare `iwr ... | iex` now defaults to your fork.
+## Expected result
 
-### What you'll need to do on GitHub (one-time, outside the code)
-
-Even after the fix, the installer needs a real release on `acynmkigrow/acyn-go` with assets named `acyn-go_<tag>_windows_amd64.zip`. To create one:
-
-1. Push a tag from the GitHub repo root: `git tag -a v1.0.0 -m "v1.0.0" && git push origin v1.0.0`
-2. The root `.github/workflows/release.yml` workflow runs GoReleaser inside `agent/`, auto-detects `acynmkigrow/acyn-go` from `git remote origin`, and uploads the correctly-named zip.
-3. Re-run `iwr -useb https://go.acyninnovation.com/install.ps1 | iex` — it'll find the release and install.
-
-If you'd rather not cut a release yet, you can also test against any other repo of yours that has matching assets via `$env:ACYN_REPO = "owner/repo"` before the `iwr` call.
-
-### Files touched
-- `public/install.ps1` (edit)
-- `.github/workflows/release.yml` (add — release workflow for the full GitHub repo)
-- `agent/RELEASING.md` (edit — example only)
-- `src/routes/release.tsx` (edit — example only)
-
-No backend, DB, or agent runtime changes.
+After syncing to GitHub, you can run **Actions → release → Run workflow**, enter a new version such as `v1.0.3`, and the workflow should test, build, package, publish the GitHub Release, and make the Windows installer succeed end to end.
