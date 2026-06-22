@@ -278,9 +278,12 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vendor := "huawei"
-	if req.Family == "mikrotik" {
+	switch req.Family {
+	case "mikrotik":
 		vendor = "mikrotik"
-	} else if req.Family == "swos" {
+	case "cisco":
+		vendor = "cisco"
+	case "swos":
 		_ = conn.Close()
 		writeJSONResp(w, http.StatusBadRequest, connectResp{Error: "SwOS devices have no CLI — manage via the web UI."})
 		return
