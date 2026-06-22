@@ -15,7 +15,7 @@ export type Plan = z.infer<typeof PlanSchema>;
 
 const InputSchema = z.object({
   intent: z.string().min(1).max(2000),
-  family: z.enum(["hg", "gpon", "xpon", "olt", "switch", "mikrotik"]),
+  family: z.enum(["hg", "gpon", "xpon", "olt", "switch", "mikrotik", "cisco"]),
   device_model: z.string().max(120).optional(),
   recent_output: z.string().max(4000).optional(),
 });

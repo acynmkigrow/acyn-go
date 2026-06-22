@@ -1,6 +1,6 @@
 // Shared between server fn and client validators. No server-only imports here.
 
-export type Family = "hg" | "gpon" | "xpon" | "olt" | "switch" | "mikrotik";
+export type Family = "hg" | "gpon" | "xpon" | "olt" | "switch" | "mikrotik" | "cisco";
 
 export const FAMILY_HINTS: Record<Family, string> = {
   olt: `Target: Huawei MA5800 / MA5600T OLT.
@@ -48,6 +48,18 @@ SYNTAX: one statement per line, hierarchical paths starting with '/'. NO 'enable
 - Queues: /queue simple add name=<n> target=<cidr> max-limit=<up>/<down>.
 - Read-only: append 'print' (e.g. '/ip address print').
 - FORBIDDEN unless user typed the same verb: /system reset-configuration, /system reboot, /system shutdown, /file remove, /user remove, /interface remove, /system routerboard reset-configuration, unfiltered 'remove [find]'.`,
+  cisco: `Target: Cisco IOS / IOS-XE / NX-OS (Catalyst, ISR, ASR, Nexus). Confirm with 'show version' if unsure.
+- Mode ladder: user '>' -> enable -> '#' -> configure terminal -> '(config)#' -> end.
+- VLAN: vlan <id> / name <n>.
+- Access port: interface Gi0/<x> / switchport mode access / switchport access vlan <id>.
+- Trunk port: interface Gi0/<x> / switchport trunk encapsulation dot1q / switchport mode trunk / switchport trunk allowed vlan <list>.
+- L3 SVI: interface vlan <id> / ip address <ip> <mask> / no shutdown.
+- Static route: ip route <net> <mask> <gw>.
+- ACL: ip access-list extended <name> / permit|deny ... / interface <if> / ip access-group <name> in|out.
+- Save: 'write memory' (or 'copy running-config startup-config').
+- Read-only: 'show running-config', 'show ip interface brief', 'show vlan brief'.
+- FORBIDDEN unless the user typed the same verb: reload, erase startup-config, write erase, delete /force, format flash:, no vlan on production.
+- Never invent interface names, IPs, ACLs. If missing, return commands:[] and ask in warning.`,
 };
 
 export const SYSTEM_PROMPT = `You are ACYN-Go, an expert Huawei carrier and home-network CLI assistant.
@@ -88,8 +100,14 @@ const DESTRUCTIVE_PATTERNS = [
   /\/system\s+shutdown\b/i,
   /\/system\s+routerboard\s+reset-configuration\b/i,
   /\/file\s+remove\b/i,
-  /\/user\s+remove\b/i,
-  /\/interface\s+remove\b/i,
+	/\/user\s+remove\b/i,
+	/\/interface\s+remove\b/i,
+	// Cisco
+	/\berase\s+startup-config\b/i,
+	/\bwrite\s+erase\b/i,
+	/\breload\b/i,
+	/\bdelete\s+\/force\b/i,
+	/\bformat\s+flash:/i,
 ];
 
 export function validateCommands(commands: string[], intent: string): { ok: boolean; reason?: string } {
