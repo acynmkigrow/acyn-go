@@ -1,79 +1,84 @@
-# Add MikroTik RouterOS support
+## Goal
 
-Extend the agent and web console so the same "describe intent → safe plan → run" flow that works for Huawei also works for any MikroTik RouterOS device (CCR, CRS in RouterOS mode, RB, hAP/cAP/wAP, Chateau). SwOS-only devices (CSS, CRS in SwOS) are explicitly marked unsupported with a clear message.
+Make onboarding a single command. The user runs `acyn-go serve` and:
 
-## What gets added
+1. The agent starts on `127.0.0.1:17017` with no prompts.
+2. The default browser opens straight to the console, already paired (no 6-digit code to type).
+3. The console auto-runs subnet discovery and lists every Huawei / MikroTik / Cisco / unknown device found.
+4. The user clicks a device → enters credentials in a modal → connection swaps live → AI chat is ready.
 
-### 1. New device family: `mikrotik`
-- Extend `Family` in `src/lib/huawei-prompts.ts` (rename the constant set, keep file path) to include `"mikrotik"`.
-- Add a `mikrotik` profile in `agent/internal/devices/` with its own prompt strings (`>` / `[admin@…] >`) and `SaveCmd` of empty string (RouterOS auto-persists).
-- Add `mikrotik` to the family dropdown in `console.tsx` ("MikroTik RouterOS (CCR/CRS/RB/hAP)").
+No CLI questions, no copy-pasting codes, no deep-link clicking unless something goes wrong.
 
-### 2. MikroTik LLM prompt module
-New `FAMILY_HINTS.mikrotik` covering the surface area requested:
-- Syntax rules: hierarchical paths (`/system identity set …`), one statement per line, multi-statement via `;`, no `enable`/`config`/`save` needed.
-- v6 vs v7 awareness: if model unknown, prefer v7 syntax; v6 fallback noted (`+cet512w` username, legacy `/routing ospf` etc.).
-- Hardening recipes: identity, `/ip service` port + disable telnet/ftp/www/api, `/user add`, `/ip ssh set host-key-type=ed25519 …`.
-- L2/L3: `/interface bridge`, `vlan-filtering=yes`, `/interface vlan`, `/ip address`, `/ip route`.
-- Edge services: `/ip pool`, `/ip dhcp-server`, `/ip dhcp-server network`, `/ip firewall nat` masquerade.
-- WireGuard: `/interface wireguard add`, `/interface wireguard peers add`, `/ip address add interface=wg…`.
-- RADIUS: `/radius add service=… address=… secret=…`, `/user aaa set use-radius=yes`, hotspot/PPP profile binding.
-- SMS (LTE/Chateau): `/tool sms send`, `/interface lte` config, inbox via `/tool sms inbox print`.
-- Hotspot, PPP secrets, queues, scripts/schedulers — short bullets so the model can compose.
-- Destructive list: `/system reset-configuration`, `/system reboot`, `/file remove`, `/user remove admin`, `/interface remove`. Only allowed when user types the same verb.
-- Output discipline reused: JSON-only, never invent IPs / interface names / secrets — return empty `commands` and ask in `warning`.
+## Changes
 
-### 3. Safety validator update
-In `validateCommands`, add MikroTik-specific destructive patterns alongside the existing Huawei ones:
-- `/system reset-configuration`, `/system reboot`, `/file remove`, `/user remove`, `/interface .* remove`, `/ip firewall .* remove [find]` without explicit filter.
-Also block obvious footguns: `remove [find]` with no `where`, `disable [find]` on `/interface ether*` without a name.
+### 1. Agent: default `serve` to web + auto-launch browser
 
-### 4. Discovery: identify MikroTik on the LAN
-Update `agent/internal/discover/signatures.go` and `scan.go`:
-- Add MikroTik markers: SSH banner contains `ROSSSH` / `MikroTik`, Telnet banner `MikroTik v…`, HTTP `Server: Mikrotik …` or HTML title `RouterOS`, plus port `8728` (API) and `8729` (API-SSL) as additional probe ports — open 8728/8729 alone is a strong MikroTik signal.
-- New `classify` return values: `vendor="mikrotik"`, `family="mikrotik"` (sub-family detection — `ccr`/`crs`/`rb`/`hap` — done from banner when present, stored as `Model` on `Device` for the picker label).
-- `Suggest`: prefer SSH/22, username `admin` (RouterOS default), note password may be blank on factory-fresh units.
-- Discovery panel sort order: Huawei + MikroTik first, then unknown.
+`agent/cmd/serve.go` and `agent/main.go`:
+- Make `--web` the default. Add `--cli` flag for the legacy interactive prompts (opt-in for power users / headless boxes).
+- After the WS bridge is listening, build a one-shot deep link that embeds the pair code:
+  `https://go.acyninnovation.com/console?pair=<code>&host=127.0.0.1&port=17017&auto=1`
+- Open it with the OS default browser:
+  - Windows: `rundll32 url.dll,FileProtocolHandler <url>`
+  - macOS: `open <url>`
+  - Linux: `xdg-open <url>`
+  Wrap in a small `internal/ui/browser.go` helper. Fall back to printing the link if launch fails or `--no-browser` is set.
+- Keep printing the pair code + link as a fallback (for SSH / remote sessions where the browser can't open locally).
 
-### 5. SwOS guardrail
-When a probed device looks like MikroTik but only :80/:443 are open and HTTP says `SwOS`, mark `family="swos"` and surface a non-blocking warning in the picker: "SwOS device — CLI not supported. Use web UI." `connectDevice` refuses with a clear error.
+### 2. Web console: auto-pair from URL params
 
-### 6. Transport
-No new transport. Existing `transport/ssh.go` and `transport/telnet.go` work as-is; only the per-family `Prompts` differ (handled by the new `devices/mikrotik.go` profile).
+`src/components/console/PairingCard.tsx` + `src/routes/_authenticated/console.tsx`:
+- On mount, read `pair`, `host`, `port`, `auto` from URL search params.
+- When `auto=1` and a pair code is present, immediately call `pair(host, port, code)` — skip the form entirely and show a "Connecting to your local agent…" spinner.
+- On success, strip the `pair` param from the URL (so refresh doesn't re-pair a stale code) and reveal the console.
+- On failure, fall back to the existing manual pairing form with a clear "Auto-pair failed — paste the 6-digit code" message.
 
-### 7. Web console glue
-- `DiscoverPanel.tsx`: show vendor badge for MikroTik (orange), display model when present, render the SwOS warning row.
-- `Wizard.tsx` RECIPES: add three MikroTik recipes — "Harden MikroTik SSH + disable Telnet/FTP", "Set up WireGuard server on MikroTik", "Add LAN bridge + DHCP + masquerade".
-- Family is auto-set to `mikrotik` when a MikroTik device is connected (same path that already auto-sets `hg`/`olt`).
+### 3. Web console: auto-run discovery after pairing
 
-### 8. Tests
-- `agent/internal/discover/scan_test.go`: add cases for MikroTik SSH banner, RouterOS HTTP header, SwOS HTTP header, and API-only (8728) signal.
-- New `src/lib/__tests__/huawei-prompts.test.ts` (rename later if desired): validate that destructive MikroTik commands without matching intent get blocked, and that benign `/ip address add …` passes.
+`src/routes/_authenticated/console.tsx` + `src/components/console/DiscoverPanel.tsx`:
+- As soon as `status === "connected"` AND no device is attached yet, trigger `discover()` automatically (single sweep) and show the device list with a "Scanning your LAN…" skeleton.
+- Add a manual "Rescan" button (already exists in DiscoverPanel — confirm).
+- Add a small "Connect manually by IP" link for cases where discovery misses the device.
 
-### 9. Release
-Bump `agent/main.go` version to `v1.0.8`. After merge, the user triggers Actions → release → `v1.0.8`, reinstalls, and the new "Find devices" sweep will now list MikroTik routers with a one-click connect.
+### 4. Cisco device family (basic)
 
-## Files touched
+Since the user mentioned Cisco, add a minimal Cisco IOS profile so the UI lists it as a real option, not a TODO:
+- `agent/internal/devices/cisco.go`: prompts `[">", "#", "(config)#"]`, `SaveCmd: "write memory"`, hints describing IOS modes (`enable` → `configure terminal` → exit with `end`), interface/vlan/access-list basics, `show running-config`, never emit `reload` / `erase startup-config` / `delete flash:`.
+- `agent/internal/discover/signatures.go`: detect Cisco banners (`cisco`, `IOS`, `Catalyst`, `Nexus`, `NX-OS`, `ASA`) → vendor=`cisco`, family=`cisco`.
+- `src/lib/huawei-prompts.ts`: add `cisco` to `Family` union + `FAMILY_HINTS.cisco` mirroring the agent profile, and add Cisco destructive patterns (`erase startup`, `reload`, `delete /force`, `format`, `write erase`).
+- `src/lib/agent.functions.ts`: include `cisco` alongside `mikrotik` in the "skip auto-save append" check only if needed (Cisco needs explicit `write memory`, so keep save). Just thread the family through.
+- UI: add Cisco to the family dropdown in `console.tsx`, the Wizard recipes (one starter: "Cisco access port + VLAN"), and the DiscoverPanel vendor badge (blue).
 
-- `src/lib/huawei-prompts.ts` (add family, hints, validator patterns)
-- `src/routes/_authenticated/console.tsx` (dropdown option)
-- `src/components/console/Wizard.tsx` (recipes)
-- `src/components/console/DiscoverPanel.tsx` (vendor badge, SwOS warning)
-- `agent/internal/devices/mikrotik.go` (new)
-- `agent/internal/discover/signatures.go` (markers, sub-family)
-- `agent/internal/discover/scan.go` (extra probe ports 8728/8729, Device.Model field)
-- `agent/internal/discover/scan_test.go` (new cases)
-- `agent/internal/server/ws.go` (pass family=mikrotik through `device` hello)
-- `agent/main.go` (version bump)
+### 5. Polish
 
-## Out of scope (call out, don't build)
-- MikroTik API protocol (8728/8729) — we stay on SSH for parity and safety.
-- Auto-upgrading RouterOS firmware.
-- Backup/restore via `/export` file download — can be a follow-up once the basics land.
+- `src/components/console/DiscoverPanel.tsx`: badge colors per vendor — Huawei red, MikroTik orange, Cisco blue, unknown gray.
+- Banner in console: "Paired with agent on 127.0.0.1 · v1.0.x" once connected.
+- Persist last successful `{ip, family, username}` in `localStorage` and pre-fill the credentials modal on next visit.
 
-## Acceptance
-1. `go test ./...` passes including new discover cases.
-2. Web console "Find devices" lists a MikroTik hAP next to a Huawei HG with correct badges.
-3. Asking "harden ssh and disable telnet" on a MikroTik produces the v7 hardening block, requires_save=false, no destructive flag.
-4. Asking "reset the router" returns `commands: []` with a warning explaining the destructive guard.
-5. A CSS/SwOS device shows up with the "CLI not supported" warning and connect is disabled.
+## Files
+
+**Agent (Go)**
+- `agent/cmd/serve.go` — default `--web` true, launch browser, build pair URL
+- `agent/main.go` — flag rename (`--cli` opt-in), bump version to `v1.0.9`
+- `agent/internal/ui/browser.go` — new, cross-platform URL opener
+- `agent/internal/devices/cisco.go` — new
+- `agent/internal/discover/signatures.go` — Cisco markers
+- `agent/internal/discover/scan_test.go` — Cisco banner test
+
+**Web**
+- `src/components/console/PairingCard.tsx` — auto-pair from query params
+- `src/routes/_authenticated/console.tsx` — auto-discover after connect, add Cisco to dropdown, last-device memory
+- `src/components/console/DiscoverPanel.tsx` — vendor color badges, auto-trigger scan
+- `src/components/console/Wizard.tsx` — Cisco recipe
+- `src/lib/huawei-prompts.ts` — Cisco family + hints + destructive patterns
+- `src/lib/agent.functions.ts` — thread `cisco` family
+- `src/components/console/useAgentSocket.ts` — accept `cisco` in `DiscoveredDevice.family` union
+
+## Release
+
+Bump `agent/main.go` to `v1.0.9`, run GitHub Actions → release → `v1.0.9`, reinstall via `iwr -useb https://go.acyninnovation.com/install.ps1 | iex`, then just run `acyn-go serve` — browser opens, device list appears, click → configure.
+
+## Out of scope
+
+- Cisco NX-OS / IOS-XE deep dialect differences (covered by hints, not separate families).
+- mDNS / SSDP discovery (TCP sweep is enough for now).
+- Saving credentials to disk (only `localStorage` in the browser, never the agent).
