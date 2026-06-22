@@ -18,11 +18,11 @@ jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.22"
           cache: false
@@ -47,45 +47,63 @@ jobs:
         working-directory: agent
         run: go test ./...
 
-      - name: Create release tag for manual runs
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve release version
+        id: release
+        shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ inputs.version }}"
-          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Version must look like v1.0.3"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          VERSION="$(echo "$VERSION" | xargs)"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must look like v1.0.6"
             exit 1
           fi
-          git fetch --tags --force --quiet
-          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
-            echo "Tag $VERSION already exists locally. Pick a new version."
-            exit 1
-          fi
-          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
-            echo "Tag $VERSION already exists on origin. Pick a new version."
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$VERSION" -m "$VERSION"
-          git push origin "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout the release tag
+      - name: Prepare release tag for manual runs
         if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git fetch --tags --force
-          git checkout "refs/tags/${{ inputs.version }}"
+          set -euo pipefail
+          VERSION="${{ steps.release.outputs.version }}"
+          HEAD_SHA="$(git rev-parse HEAD)"
 
-      # Note: we run GoReleaser unconditionally in the same job. GitHub Actions
-      # does NOT trigger workflows from tags pushed by GITHUB_TOKEN, so a
-      # separate "on: push: tags" run would never fire for manual releases.
-      - uses: goreleaser/goreleaser-action@v6
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists. Pick a new version."
+            exit 1
+          fi
+
+          git fetch --tags --force --quiet
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            git fetch --force origin "refs/tags/$VERSION:refs/tags/$VERSION"
+            TAG_SHA="$(git rev-list -n 1 "$VERSION")"
+            if [[ "$TAG_SHA" != "$HEAD_SHA" ]]; then
+              echo "Tag $VERSION already exists on a different commit ($TAG_SHA). Pick a new version."
+              exit 1
+            fi
+            echo "Tag $VERSION already exists on this commit without a release; reusing it."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$VERSION" -m "$VERSION"
+            git push origin "$VERSION"
+          fi
+
+      - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
-          version: "~> v2"
+          version: "v2.16.0"
           workdir: agent
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify GitHub release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release view "${{ steps.release.outputs.version }}" --json tagName,url,assets
