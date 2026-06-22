@@ -83,7 +83,7 @@ function ConsolePage() {
     }
   }, [family]);
 
-  const { status, device, pair, exec, disconnect } = useAgentSocket(onSocketMsg);
+  const { status, device, pair, exec, disconnect, discover, connectDevice } = useAgentSocket(onSocketMsg);
 
   // Sync family from connected device
   useEffect(() => {
