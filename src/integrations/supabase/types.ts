@@ -14,7 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      command_runs: {
+        Row: {
+          commands: Json
+          created_at: string
+          device_profile_id: string | null
+          duration_ms: number | null
+          family: string | null
+          id: string
+          intent: string
+          ok: boolean
+          output: string | null
+          user_id: string
+        }
+        Insert: {
+          commands?: Json
+          created_at?: string
+          device_profile_id?: string | null
+          duration_ms?: number | null
+          family?: string | null
+          id?: string
+          intent: string
+          ok?: boolean
+          output?: string | null
+          user_id: string
+        }
+        Update: {
+          commands?: Json
+          created_at?: string
+          device_profile_id?: string | null
+          duration_ms?: number | null
+          family?: string | null
+          id?: string
+          intent?: string
+          ok?: boolean
+          output?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "command_runs_device_profile_id_fkey"
+            columns: ["device_profile_id"]
+            isOneToOne: false
+            referencedRelation: "device_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_profiles: {
+        Row: {
+          created_at: string
+          family: string
+          id: string
+          label: string
+          last_used_at: string | null
+          model: string | null
+          user_id: string
+          vendor: string
+        }
+        Insert: {
+          created_at?: string
+          family: string
+          id?: string
+          label: string
+          last_used_at?: string | null
+          model?: string | null
+          user_id: string
+          vendor?: string
+        }
+        Update: {
+          created_at?: string
+          family?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          model?: string | null
+          user_id?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
