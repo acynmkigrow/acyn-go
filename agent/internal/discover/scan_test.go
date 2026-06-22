@@ -13,7 +13,10 @@ func TestClassify(t *testing.T) {
 		{"echolife-ont", "EchoLife HG8546M telnet", "huawei", "hg"},
 		{"random-linux", "SSH-2.0-OpenSSH_8.4p1 Debian", "", ""},
 		{"http-iis", "HTTP/1.1 200 OK\r\nServer: Microsoft-IIS/10.0", "", ""},
-	}
+		{"mikrotik-ssh", "SSH-2.0-ROSSSH", "mikrotik", "mikrotik"},
+		{"mikrotik-http", "HTTP/1.1 200 OK\r\nServer: Mikrotik HttpProxy", "mikrotik", "mikrotik"},
+		{"mikrotik-routeros", "RouterOS 7.10 (stable) login:", "mikrotik", "mikrotik"},
+		{"swos", "SwOS v2.16 login:", "mikrotik", "swos"},
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			v, f := classify(c.banner)
