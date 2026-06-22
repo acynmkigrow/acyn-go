@@ -18,7 +18,7 @@
 $ErrorActionPreference = 'Stop'
 
 # Repo can be overridden with $env:ACYN_REPO = "owner/name"
-$repo = if ($env:ACYN_REPO) { $env:ACYN_REPO } else { 'acyninnovation/acyn-go' }
+$repo = if ($env:ACYN_REPO) { $env:ACYN_REPO } else { 'acynmkigrow/acyn-go' }
 $RepoOwner, $RepoName = $repo.Split('/', 2)
 
 Write-Host ""
