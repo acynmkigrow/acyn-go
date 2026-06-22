@@ -7,4 +7,5 @@ require (
 	github.com/reiver/go-telnet v0.0.0-20180421082511-9ff0b2ab096e
 	golang.org/x/crypto v0.31.0
 	google.golang.org/api v0.197.0
+	nhooyr.io/websocket v1.8.11
 )

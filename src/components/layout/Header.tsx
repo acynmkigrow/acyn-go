@@ -7,6 +7,8 @@ const links = [
   { to: "/hardware", label: "Hardware" },
   { to: "/install", label: "Install" },
   { to: "/guide", label: "Guide" },
+  { to: "/console", label: "Console" },
+  { to: "/release", label: "Release" },
 ];
 
 export function Header() {

@@ -9,16 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReleaseRouteImport } from './routes/release'
 import { Route as LegalRouteImport } from './routes/legal'
 import { Route as InstallRouteImport } from './routes/install'
 import { Route as HardwareRouteImport } from './routes/hardware'
 import { Route as GuideRouteImport } from './routes/guide'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LegalTermsRouteImport } from './routes/legal.terms'
 import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as LegalLicenseRouteImport } from './routes/legal.license'
 import { Route as LegalContactRouteImport } from './routes/legal.contact'
+import { Route as AuthenticatedConsoleRouteImport } from './routes/_authenticated/console'
 
+const ReleaseRoute = ReleaseRouteImport.update({
+  id: '/release',
+  path: '/release',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
@@ -37,6 +46,15 @@ const HardwareRoute = HardwareRouteImport.update({
 const GuideRoute = GuideRouteImport.update({
   id: '/guide',
   path: '/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -64,13 +82,21 @@ const LegalContactRoute = LegalContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => LegalRoute,
 } as any)
+const AuthenticatedConsoleRoute = AuthenticatedConsoleRouteImport.update({
+  id: '/console',
+  path: '/console',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/guide': typeof GuideRoute
   '/hardware': typeof HardwareRoute
   '/install': typeof InstallRoute
   '/legal': typeof LegalRouteWithChildren
+  '/release': typeof ReleaseRoute
+  '/console': typeof AuthenticatedConsoleRoute
   '/legal/contact': typeof LegalContactRoute
   '/legal/license': typeof LegalLicenseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
@@ -78,10 +104,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/guide': typeof GuideRoute
   '/hardware': typeof HardwareRoute
   '/install': typeof InstallRoute
   '/legal': typeof LegalRouteWithChildren
+  '/release': typeof ReleaseRoute
+  '/console': typeof AuthenticatedConsoleRoute
   '/legal/contact': typeof LegalContactRoute
   '/legal/license': typeof LegalLicenseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
@@ -90,10 +119,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/guide': typeof GuideRoute
   '/hardware': typeof HardwareRoute
   '/install': typeof InstallRoute
   '/legal': typeof LegalRouteWithChildren
+  '/release': typeof ReleaseRoute
+  '/_authenticated/console': typeof AuthenticatedConsoleRoute
   '/legal/contact': typeof LegalContactRoute
   '/legal/license': typeof LegalLicenseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
@@ -103,10 +136,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/guide'
     | '/hardware'
     | '/install'
     | '/legal'
+    | '/release'
+    | '/console'
     | '/legal/contact'
     | '/legal/license'
     | '/legal/privacy'
@@ -114,10 +150,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/guide'
     | '/hardware'
     | '/install'
     | '/legal'
+    | '/release'
+    | '/console'
     | '/legal/contact'
     | '/legal/license'
     | '/legal/privacy'
@@ -125,10 +164,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
+    | '/auth'
     | '/guide'
     | '/hardware'
     | '/install'
     | '/legal'
+    | '/release'
+    | '/_authenticated/console'
     | '/legal/contact'
     | '/legal/license'
     | '/legal/privacy'
@@ -137,14 +180,24 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
   GuideRoute: typeof GuideRoute
   HardwareRoute: typeof HardwareRoute
   InstallRoute: typeof InstallRoute
   LegalRoute: typeof LegalRouteWithChildren
+  ReleaseRoute: typeof ReleaseRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/release': {
+      id: '/release'
+      path: '/release'
+      fullPath: '/release'
+      preLoaderRoute: typeof ReleaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/legal': {
       id: '/legal'
       path: '/legal'
@@ -171,6 +224,20 @@ declare module '@tanstack/react-router' {
       path: '/guide'
       fullPath: '/guide'
       preLoaderRoute: typeof GuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -208,8 +275,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalContactRouteImport
       parentRoute: typeof LegalRoute
     }
+    '/_authenticated/console': {
+      id: '/_authenticated/console'
+      path: '/console'
+      fullPath: '/console'
+      preLoaderRoute: typeof AuthenticatedConsoleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedConsoleRoute: typeof AuthenticatedConsoleRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedConsoleRoute: AuthenticatedConsoleRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface LegalRouteChildren {
   LegalContactRoute: typeof LegalContactRoute
@@ -229,10 +314,13 @@ const LegalRouteWithChildren = LegalRoute._addFileChildren(LegalRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
   GuideRoute: GuideRoute,
   HardwareRoute: HardwareRoute,
   InstallRoute: InstallRoute,
   LegalRoute: LegalRouteWithChildren,
+  ReleaseRoute: ReleaseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
