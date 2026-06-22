@@ -60,11 +60,16 @@ func runServe() {
 	sshLegacy := fs.Bool("ssh-legacy", false, "enable legacy SSH key exchange algorithms")
 	configureIP := fs.String("ip", "", "device IP (non-interactive mode)")
 	profile := fs.String("profile", "", "device profile (hg|gpon|xpon|olt|switch)")
+	web := fs.Bool("web", false, "skip device prompts; discover & connect from the web console")
 	_ = fs.Parse(os.Args[2:])
 
 	ui.Banner(version)
-	sess := config.FromPromptOrFlags(*configureIP, *profile)
-	sess.SSHLegacy = *sshLegacy
+
+	var sess *config.Session
+	if !*web {
+		sess = config.FromPromptOrFlags(*configureIP, *profile)
+		sess.SSHLegacy = *sshLegacy
+	}
 
 	host := "127.0.0.1"
 	if *lan {
