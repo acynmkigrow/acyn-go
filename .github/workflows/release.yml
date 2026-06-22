@@ -40,6 +40,7 @@ jobs:
             exit 1
           fi
           git tag -a "$VERSION" -m "$VERSION"
+          git push origin "$VERSION"
 
       - uses: goreleaser/goreleaser-action@v6
         with:
