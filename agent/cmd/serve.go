@@ -13,12 +13,16 @@ import (
 	"github.com/acyninnovation/acyn-go/internal/devices"
 	"github.com/acyninnovation/acyn-go/internal/server"
 	"github.com/acyninnovation/acyn-go/internal/transport"
+	"github.com/acyninnovation/acyn-go/internal/ui"
 )
 
 // RunServe starts the WS bridge. When sess is non-nil it eagerly dials the
 // device; when sess is nil it starts with no device and waits for the web
-// console to call POST /connect (--web mode).
-func RunServe(ctx context.Context, sess *config.Session, host string, port int) error {
+// console to call POST /connect (default --web mode).
+//
+// If openBrowser is true, the agent will attempt to launch the system browser
+// to a deep-link that auto-pairs the web console with this agent.
+func RunServe(ctx context.Context, sess *config.Session, host string, port int, openBrowser bool) error {
 	var conn transport.Conn
 	var dev server.DeviceInfo
 
@@ -34,8 +38,15 @@ func RunServe(ctx context.Context, sess *config.Session, host string, port int) 
 		if err != nil {
 			return fmt.Errorf("device connect: %w", err)
 		}
+		vendor := "huawei"
+		switch sess.DeviceType {
+		case "mikrotik":
+			vendor = "mikrotik"
+		case "cisco":
+			vendor = "cisco"
+		}
 		dev = server.DeviceInfo{
-			Vendor: "huawei",
+			Vendor: vendor,
 			Model:  sess.DeviceType,
 			Family: sess.DeviceType,
 			Prompt: firstPrompt(prof.Prompts),
@@ -50,7 +61,7 @@ func RunServe(ctx context.Context, sess *config.Session, host string, port int) 
 	}()
 
 	deepLink := fmt.Sprintf(
-		"https://go.acyninnovation.com/console?pair=%s&host=%s&port=%d",
+		"https://go.acyninnovation.com/console?pair=%s&host=%s&port=%d&auto=1",
 		srv.PairCode(), host, port,
 	)
 	fmt.Println()
@@ -58,7 +69,11 @@ func RunServe(ctx context.Context, sess *config.Session, host string, port int) 
 	fmt.Printf("│  Pairing code: %s                                       │\n", srv.PairCode())
 	fmt.Printf("│  Listening on ws://%s                              │\n", srv.Addr())
 	fmt.Println("│                                                            │")
-	fmt.Println("│  Click to auto-pair this browser:                          │")
+	if openBrowser {
+		fmt.Println("│  Opening your browser to auto-pair…                        │")
+	} else {
+		fmt.Println("│  Click to auto-pair this browser:                          │")
+	}
 	fmt.Printf("│  %s\n", deepLink)
 	fmt.Println("│  (or paste the 6-digit code in the console)                │")
 	if sess == nil {
@@ -67,6 +82,12 @@ func RunServe(ctx context.Context, sess *config.Session, host string, port int) 
 	}
 	fmt.Println("└────────────────────────────────────────────────────────────┘")
 	fmt.Println()
+
+	if openBrowser {
+		if err := ui.OpenBrowser(deepLink); err != nil {
+			fmt.Fprintf(os.Stderr, "(could not auto-open browser: %v — open the link above manually)\n", err)
+		}
+	}
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()

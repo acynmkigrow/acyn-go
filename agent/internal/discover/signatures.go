@@ -27,6 +27,14 @@ func classify(banner string) (string, string) {
 		return "mikrotik", "swos"
 	}
 
+	// Cisco markers.
+	ciscoMarkers := []string{"cisco", "ios software", "ios-xe", "nx-os", "catalyst", "nexus", "cisco-ios", " asa "}
+	for _, m := range ciscoMarkers {
+		if strings.Contains(low, m) {
+			return "cisco", "cisco"
+		}
+	}
+
 	// Huawei markers.
 	huaweiMarkers := []string{"huawei", "echolife", "smartax", "hg8", "ma56", "ma58", "ar1200", "ar2200"}
 	isHuawei := false

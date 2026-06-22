@@ -24,7 +24,7 @@ export function Wizard({
     },
     {
       id: "serve",
-      title: "Run the agent and connect to your device",
+      title: "Run the agent",
       done: paired,
       body: (
         <>
@@ -32,20 +32,20 @@ export function Wizard({
             acyn-go serve
           </code>
           <p className="mt-1 text-[11px] text-white/40">
-            Enter device IP, protocol, credentials. The agent prints a 6-digit pair code
-            and a clickable pair link.
+            Your browser opens automatically and pairs in one click — no codes to type. Add{" "}
+            <code className="text-white/60">--cli</code> for the legacy interactive prompts.
           </p>
         </>
       ),
     },
     {
       id: "pair",
-      title: "Pair this browser",
+      title: "Pick your device",
       done: paired,
       body: (
         <p className="mt-1 text-[11px] text-white/40">
-          Paste the 6-digit code into the card on the left — or click the link printed in
-          your terminal and it auto-pairs.
+          The console scans your LAN for Huawei, MikroTik, and Cisco devices. Click one, enter
+          credentials, and you're connected.
         </p>
       ),
     },
@@ -94,7 +94,7 @@ export function Wizard({
   );
 }
 
-export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon" | "mikrotik"; intent: string }[] = [
+export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon" | "mikrotik" | "cisco"; intent: string }[] = [
   {
     label: "Change Wi-Fi password",
     family: "hg",
@@ -143,5 +143,17 @@ export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon" 
     family: "mikrotik",
     intent:
       "Create a LAN bridge with ether2..ether5, assign <lan-cidr> on the bridge, run a DHCP server with pool <pool-start>-<pool-end> and DNS 1.1.1.1, and masquerade out <wan-if>.",
+  },
+  {
+    label: "Cisco access port + VLAN",
+    family: "cisco",
+    intent:
+      "On switch interface GigabitEthernet0/<port>, set it as an access port on VLAN <vid>, name the VLAN \"<name>\", and save.",
+  },
+  {
+    label: "Cisco trunk uplink",
+    family: "cisco",
+    intent:
+      "Configure GigabitEthernet0/<port> as a dot1q trunk allowing VLANs <vid-list>, and save.",
   },
 ];

@@ -12,7 +12,7 @@ export type SocketStatus = "idle" | "pairing" | "connected" | "error";
 export type DiscoveredDevice = {
   ip: string;
   openPorts: number[];
-  vendor: "huawei" | "unknown" | string;
+  vendor: "huawei" | "mikrotik" | "cisco" | "unknown" | string;
   family: Family | "swos" | "";
   banner: string;
   suggested: { protocol: "ssh" | "telnet" | string; port: number; username: string };

@@ -17,11 +17,12 @@ export const Route = createFileRoute("/_authenticated/console")({
     pair: typeof search.pair === "string" ? search.pair : undefined,
     host: typeof search.host === "string" ? search.host : undefined,
     port: typeof search.port === "string" ? search.port : undefined,
+    auto: typeof search.auto === "string" ? search.auto : undefined,
   }),
   head: () => ({
     meta: [
       { title: "Console · ACYN-Go" },
-      { name: "description", content: "Chat with the ACYN-Go agent and configure Huawei devices from your browser." },
+      { name: "description", content: "Chat with the ACYN-Go agent and configure Huawei, MikroTik, and Cisco devices from your browser." },
     ],
   }),
   component: ConsolePage,
@@ -187,12 +188,14 @@ function ConsolePage() {
             initialHost={search.host}
             initialPort={initialPort}
             initialCode={search.pair}
-            autoPair={Boolean(search.pair)}
+            autoPair={Boolean(search.pair) && search.auto === "1"}
           />
           {!paired && (
             <Wizard installed paired={paired} intentSent={intentSent} />
           )}
-          {paired && <DiscoverPanel onDiscover={discover} onConnect={connectDevice} />}
+          {paired && !device && (
+            <DiscoverPanel onDiscover={discover} onConnect={connectDevice} autoScan />
+          )}
           <div className="rounded-2xl bg-white/[0.02] p-5">
             <div className="text-xs uppercase tracking-wider text-white/40 mb-3">Device family</div>
             <select
@@ -200,12 +203,13 @@ function ConsolePage() {
               onChange={(e) => setFamily(e.target.value as Family)}
               className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-primary"
             >
-              <option value="hg">HG ONT (HG8245/HG8546)</option>
-              <option value="gpon">GPON ONT</option>
-              <option value="xpon">XPON ONT</option>
-              <option value="olt">OLT (MA5800/MA5600T)</option>
-              <option value="switch">Switch (S5700/S6700)</option>
+              <option value="hg">Huawei HG ONT (HG8245/HG8546)</option>
+              <option value="gpon">Huawei GPON ONT</option>
+              <option value="xpon">Huawei XPON ONT</option>
+              <option value="olt">Huawei OLT (MA5800/MA5600T)</option>
+              <option value="switch">Huawei Switch (S5700/S6700)</option>
               <option value="mikrotik">MikroTik RouterOS (CCR/CRS/RB/hAP)</option>
+              <option value="cisco">Cisco IOS / IOS-XE / NX-OS</option>
             </select>
             <p className="mt-3 text-xs text-white/40">Auto-detected when paired.</p>
           </div>
