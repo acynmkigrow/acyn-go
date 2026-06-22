@@ -106,6 +106,10 @@ export function validateCommands(commands: string[], intent: string): { ok: bool
     if (/\b0\/\*\/\*/.test(clean) || /\ball\s+all\b/i.test(clean)) {
       return { ok: false, reason: `Wildcard slot/port in "${clean}".` };
     }
+    // MikroTik unfiltered mass-remove guard
+    if (/\bremove\s+\[\s*find\s*\]\s*$/i.test(clean)) {
+      return { ok: false, reason: `Unfiltered 'remove [find]' in "${clean}" — add a where clause.` };
+    }
   }
   return { ok: true };
 }
