@@ -25,10 +25,16 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-          cache-dependency-path: agent/go.sum
+          cache: false
+
+      - name: Generate go.sum
+        working-directory: agent
+        run: go mod tidy
 
       - name: Create release tag for manual runs
         if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ inputs.version }}"
           if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -39,8 +45,11 @@ jobs:
             echo "Tag $VERSION already exists. Use a new version."
             exit 1
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$VERSION" -m "$VERSION"
           git push origin "$VERSION"
+
 
       - uses: goreleaser/goreleaser-action@v6
         with:
