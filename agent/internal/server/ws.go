@@ -428,8 +428,11 @@ func (s *Server) runBatch(ctx context.Context, c *websocket.Conn, msg execMsg) {
 		}
 	}
 	if msg.Save && ok {
-		if out, err := conn.Send("save"); err == nil {
-			writeWS(ctx, c, outMsg{Type: "output", ID: msg.ID, Line: strings.TrimRight(out, "\r\n"), Stream: "stdout"})
+		saveCmd := devices.Get(s.currentDevice().Family).SaveCmd
+		if saveCmd != "" {
+			if out, err := conn.Send(saveCmd); err == nil {
+				writeWS(ctx, c, outMsg{Type: "output", ID: msg.ID, Line: strings.TrimRight(out, "\r\n"), Stream: "stdout"})
+			}
 		}
 	}
 	writeWS(ctx, c, outMsg{Type: "done", ID: msg.ID, OK: ok, DurMs: time.Since(start).Milliseconds()})

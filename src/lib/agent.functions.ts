@@ -60,7 +60,10 @@ export const planConfig = createServerFn({ method: "POST" })
           },
         } as const;
       }
-      if (plan.requires_save && plan.commands.length > 0 && data.family !== "mikrotik") {
+      // Auto-append save only for Huawei dialects (HG/GPON/XPON/OLT/Switch use 'save').
+      // MikroTik auto-persists. Cisco's save ('write memory') is sent by the agent via SaveCmd.
+      const huaweiSave = ["hg", "gpon", "xpon", "olt", "switch"].includes(data.family);
+      if (plan.requires_save && plan.commands.length > 0 && huaweiSave) {
         const last = plan.commands[plan.commands.length - 1].trim().toLowerCase();
         if (last !== "save" && last !== "save y") {
           plan.commands.push("save");
