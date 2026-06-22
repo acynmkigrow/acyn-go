@@ -7,6 +7,8 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+type RuntimeEnv = Record<string, unknown>;
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -16,6 +18,15 @@ async function getServerEntry(): Promise<ServerEntry> {
     );
   }
   return serverEntryPromise;
+}
+
+function hydrateProcessEnv(env: unknown) {
+  if (!env || typeof env !== "object") return;
+
+  for (const [key, value] of Object.entries(env as RuntimeEnv)) {
+    if (typeof value !== "string" || value.length === 0) continue;
+    process.env[key] = value;
+  }
 }
 
 // h3 swallows in-handler throws into a normal 500 Response with body
@@ -40,6 +51,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      hydrateProcessEnv(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
