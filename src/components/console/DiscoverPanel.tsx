@@ -65,9 +65,23 @@ export function DiscoverPanel({
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 text-[11px]">
                   <Wifi className="h-3 w-3 text-white/40" />
-                  <span className={d.vendor === "huawei" ? "text-emerald-400/90" : "text-white/40"}>
-                    {d.vendor === "huawei"
+                  <span
+                    className={
+                      d.family === "swos"
+                        ? "text-amber-400/90"
+                        : d.vendor === "huawei"
+                        ? "text-emerald-400/90"
+                        : d.vendor === "mikrotik"
+                        ? "text-orange-400/90"
+                        : "text-white/40"
+                    }
+                  >
+                    {d.family === "swos"
+                      ? "MikroTik · SwOS (CLI not supported — web UI only)"
+                      : d.vendor === "huawei"
                       ? `Huawei${d.family ? " · " + d.family.toUpperCase() : ""}`
+                      : d.vendor === "mikrotik"
+                      ? "MikroTik · RouterOS"
                       : "unknown"}
                   </span>
                 </div>
@@ -106,7 +120,7 @@ function CredsDialog({
   onClose: () => void;
   onSubmit: (creds: ConnectCreds) => Promise<{ ok: boolean; error?: string }>;
 }) {
-  const families: Family[] = ["hg", "gpon", "xpon", "olt", "switch"];
+  const families: Family[] = ["hg", "gpon", "xpon", "olt", "switch", "mikrotik"];
   const [protocol, setProtocol] = useState<"ssh" | "telnet">(
     (device.suggested.protocol === "ssh" || device.suggested.protocol === "telnet"
       ? device.suggested.protocol
