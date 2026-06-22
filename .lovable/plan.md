@@ -19,14 +19,15 @@ Two things are wrong:
 
 Even after the fix, the installer needs a real release on `acynmkigrow/acyn-go` with assets named `acyn-go_<tag>_windows_amd64.zip`. To create one:
 
-1. Push a tag from your `agent/` folder: `git tag -a v1.0.0 -m "v1.0.0" && git push origin v1.0.0`
-2. The `.github/workflows/release.yml` workflow runs GoReleaser, which auto-detects `acynmkigrow/acyn-go` from `git remote origin` (we already removed the hardcoded owner) and uploads the correctly-named zip.
+1. Push a tag from the GitHub repo root: `git tag -a v1.0.0 -m "v1.0.0" && git push origin v1.0.0`
+2. The root `.github/workflows/release.yml` workflow runs GoReleaser inside `agent/`, auto-detects `acynmkigrow/acyn-go` from `git remote origin`, and uploads the correctly-named zip.
 3. Re-run `iwr -useb https://go.acyninnovation.com/install.ps1 | iex` — it'll find the release and install.
 
 If you'd rather not cut a release yet, you can also test against any other repo of yours that has matching assets via `$env:ACYN_REPO = "owner/repo"` before the `iwr` call.
 
 ### Files touched
 - `public/install.ps1` (edit)
+- `.github/workflows/release.yml` (add — release workflow for the full GitHub repo)
 - `agent/RELEASING.md` (edit — example only)
 - `src/routes/release.tsx` (edit — example only)
 

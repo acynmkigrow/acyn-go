@@ -7,10 +7,10 @@
   extracts to %LOCALAPPDATA%\acyn-go, adds it to the user PATH, and optionally
   prompts for a Gemini or OpenAI API key.
 
-  Usage (default — ACYN's official build):
+  Usage (default — ACYN's hosted build):
     iwr -useb https://go.acyninnovation.com/install.ps1 | iex
 
-  Usage (your own fork):
+  Usage (a different GitHub repo):
     $env:ACYN_REPO = "yourgithubuser/yourrepo"
     iwr -useb https://go.acyninnovation.com/install.ps1 | iex
 #>
@@ -45,9 +45,12 @@ try {
 Could not resolve the latest release for $RepoOwner/$RepoName.
 
 Likely causes:
-  - The repo has no published releases yet. Cut one by pushing a git tag
-    (e.g. ``git tag -a v1.0.0 -m v1.0.0 && git push origin v1.0.0``) so the
-    release workflow runs and uploads the Windows zip.
+  - The repo has no published releases yet. In GitHub, open the repo's
+    Actions tab and confirm the release workflow exists. Then push a tag from
+    the repo root, e.g.:
+        git tag -a v1.0.0 -m v1.0.0
+        git push origin v1.0.0
+    The workflow must finish successfully and upload the Windows zip.
   - The repo name is wrong. Override with:
         `$env:ACYN_REPO = "owner/repo"`
         iwr -useb https://go.acyninnovation.com/install.ps1 | iex

@@ -15,7 +15,13 @@ without edits.
 5. Leave README / .gitignore / license **unchecked**
 6. Click **Create repository**
 
-### A2. Push the `agent/` folder as the repo root
+### A2. Push the code to GitHub
+
+If you connected this whole Lovable project to GitHub/Vercel, keep the full
+project as the repo root. The root `.github/workflows/release.yml` file builds
+the Go agent from `agent/` and publishes the release assets automatically.
+
+If you want a separate agent-only repo instead, push `agent/` as that repo root:
 
 *Already cloned from Lovable's GitHub mirror:*
 ```bash
@@ -61,11 +67,15 @@ cd agent
 goreleaser release --snapshot --clean
 ```
 
-### 3. Tag & push
+### 3. Tag & push from the GitHub repo root
 ```bash
+cd <repo-root>
 git tag -a v1.2.0 -m "ACYN-Go v1.2.0"
 git push origin v1.2.0
 ```
+
+For the current `acynmkigrow/acyn-go` Vercel repo, do this from the full project
+root, not from a separate local `agent/` git repository.
 
 ### 4. CI runs `.github/workflows/release.yml`
 GoReleaser produces:
