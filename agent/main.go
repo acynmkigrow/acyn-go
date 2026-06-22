@@ -13,7 +13,7 @@ import (
 )
 
 // version is overridden at build time via -ldflags "-X main.version=..."
-var version = "dev"
+var version = "v1.0.9"
 
 func main() {
 	// Subcommand: acyn-go serve [--lan] [--port N]
@@ -59,14 +59,16 @@ func runServe() {
 	port := fs.Int("port", 17017, "TCP port for the WebSocket bridge")
 	sshLegacy := fs.Bool("ssh-legacy", false, "enable legacy SSH key exchange algorithms")
 	configureIP := fs.String("ip", "", "device IP (non-interactive mode)")
-	profile := fs.String("profile", "", "device profile (hg|gpon|xpon|olt|switch)")
-	web := fs.Bool("web", false, "skip device prompts; discover & connect from the web console")
+	profile := fs.String("profile", "", "device profile (hg|gpon|xpon|olt|switch|mikrotik|cisco)")
+	cliMode := fs.Bool("cli", false, "force interactive CLI prompts (legacy)")
+	noBrowser := fs.Bool("no-browser", false, "do not auto-open the web console")
 	_ = fs.Parse(os.Args[2:])
 
 	ui.Banner(version)
 
+	// Default: web mode (no prompts). --cli opts back into the legacy interactive flow.
 	var sess *config.Session
-	if !*web {
+	if *cliMode || *configureIP != "" || *profile != "" {
 		sess = config.FromPromptOrFlags(*configureIP, *profile)
 		sess.SSHLegacy = *sshLegacy
 	}
@@ -75,7 +77,7 @@ func runServe() {
 	if *lan {
 		host = "0.0.0.0"
 	}
-	if err := cmd.RunServe(context.Background(), sess, host, *port); err != nil {
+	if err := cmd.RunServe(context.Background(), sess, host, *port, !*noBrowser); err != nil {
 		fmt.Fprintf(os.Stderr, "■■ serve: %v\n", err)
 		os.Exit(1)
 	}
