@@ -78,7 +78,12 @@ jobs:
           git fetch --tags --force
           git checkout "refs/tags/${{ inputs.version }}"
 
+      - name: Release will run from pushed tag
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "Tag ${{ inputs.version }} was pushed. The tag-triggered workflow run will publish the GitHub Release."
+
       - uses: goreleaser/goreleaser-action@v6
+        if: github.event_name == 'push'
         with:
           distribution: goreleaser
           version: "~> v2"
