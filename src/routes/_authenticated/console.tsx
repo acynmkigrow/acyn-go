@@ -53,23 +53,26 @@ function ConsolePage() {
         prev.map((msg) => (msg.id === m.id ? { ...msg, output: outputBufRef.current.get(m.id) } : msg)),
       );
     } else if (m.type === "done") {
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === m.id ? { ...msg, ran: true, ok: m.ok } : msg)),
-      );
-      const finalMsg = messages.find((x) => x.id === m.id);
       const finalOutput = outputBufRef.current.get(m.id) ?? "";
-      void supabase.from("command_runs").insert({
-        intent: finalMsg && finalMsg.role === "assistant" ? finalMsg.text : "",
-        family,
-        commands: finalMsg && finalMsg.role === "assistant" ? finalMsg.plan?.commands ?? [] : [],
-        output: finalOutput,
-        ok: m.ok,
-        duration_ms: m.durationMs,
-        user_id: (await Promise.resolve()) as unknown as string, // placeholder, overwritten below
-      } as never).then(() => {});
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === m.id ? { ...msg, ran: true, ok: m.ok, output: finalOutput } : msg)),
+      );
+      void (async () => {
+        const { data: u } = await supabase.auth.getUser();
+        if (!u.user) return;
+        await supabase.from("command_runs").insert({
+          user_id: u.user.id,
+          intent: "",
+          family,
+          commands: [],
+          output: finalOutput,
+          ok: m.ok,
+          duration_ms: m.durationMs,
+        });
+      })();
       setPendingExecId(null);
     }
-  }, [messages, family]);
+  }, [family]);
 
   const { status, device, pair, exec, disconnect } = useAgentSocket(onSocketMsg);
 
