@@ -41,12 +41,19 @@ func RunServe(ctx context.Context, sess *config.Session, host string, port int) 
 	}
 	srv := server.New(host, port, conn, dev)
 
+	deepLink := fmt.Sprintf(
+		"https://go.acyninnovation.com/console?pair=%s&host=%s&port=%d",
+		srv.PairCode(), host, port,
+	)
 	fmt.Println()
-	fmt.Println("┌──────────────────────────────────────────┐")
-	fmt.Printf("│  Pairing code: %s              │\n", srv.PairCode())
-	fmt.Println("│  Open https://go.acyninnovation.com/console │")
-	fmt.Printf("│  Listening on ws://%s            │\n", srv.Addr())
-	fmt.Println("└──────────────────────────────────────────┘")
+	fmt.Println("┌────────────────────────────────────────────────────────────┐")
+	fmt.Printf("│  Pairing code: %s                                       │\n", srv.PairCode())
+	fmt.Printf("│  Listening on ws://%s                              │\n", srv.Addr())
+	fmt.Println("│                                                            │")
+	fmt.Println("│  Click to auto-pair this browser:                          │")
+	fmt.Printf("│  %s\n", deepLink)
+	fmt.Println("│  (or paste the 6-digit code in the console)                │")
+	fmt.Println("└────────────────────────────────────────────────────────────┘")
 	fmt.Println()
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)

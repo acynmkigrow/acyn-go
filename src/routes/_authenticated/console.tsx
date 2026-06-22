@@ -1,15 +1,22 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, Trash2, Play, X, LogOut } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Send, Trash2, LogOut, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { planConfig, type Plan } from "@/lib/agent.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { PairingCard } from "@/components/console/PairingCard";
 import { useAgentSocket, type ExecMessage } from "@/components/console/useAgentSocket";
+import { EditablePlan } from "@/components/console/EditablePlan";
+import { Wizard, RECIPES } from "@/components/console/Wizard";
 import type { Family } from "@/lib/huawei-prompts";
 
 export const Route = createFileRoute("/_authenticated/console")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    pair: typeof search.pair === "string" ? search.pair : undefined,
+    host: typeof search.host === "string" ? search.host : undefined,
+    port: typeof search.port === "string" ? search.port : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Console · ACYN-Go" },
@@ -37,6 +44,7 @@ function loadMessages(): ChatMsg[] {
 
 function ConsolePage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [messages, setMessages] = useState<ChatMsg[]>(() => loadMessages());
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -90,16 +98,28 @@ function ConsolePage() {
     }
   }, [messages]);
 
-  async function send() {
-    const text = input.trim();
-    if (!text || busy) return;
+  // Clear pair params from URL once consumed so reload doesn't re-pair
+  useEffect(() => {
+    if (status === "connected" && (search.pair || search.host || search.port)) {
+      void navigate({ to: "/console", search: {}, replace: true });
+    }
+  }, [status, search.pair, search.host, search.port, navigate]);
+
+  const initialPort = useMemo(() => {
+    const n = search.port ? parseInt(search.port) : NaN;
+    return Number.isFinite(n) ? n : undefined;
+  }, [search.port]);
+
+  async function send(text?: string) {
+    const value = (text ?? input).trim();
+    if (!value || busy) return;
     const userId = crypto.randomUUID();
     const asstId = crypto.randomUUID();
-    setMessages((prev) => [...prev, { id: userId, role: "user", text }]);
+    setMessages((prev) => [...prev, { id: userId, role: "user", text: value }]);
     setInput("");
     setBusy(true);
     try {
-      const res = await callPlanConfig({ data: { intent: text, family } });
+      const res = await callPlanConfig({ data: { intent: value, family } });
       if ("error" in res) {
         toast.error(res.error);
         setMessages((prev) => [
@@ -107,7 +127,7 @@ function ConsolePage() {
           { id: asstId, role: "assistant", text: "Couldn't plan that.", plan: undefined },
         ]);
       } else {
-        setMessages((prev) => [...prev, { id: asstId, role: "assistant", text, plan: res.plan }]);
+        setMessages((prev) => [...prev, { id: asstId, role: "assistant", text: value, plan: res.plan }]);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Planner failed");
@@ -116,7 +136,7 @@ function ConsolePage() {
     }
   }
 
-  async function run(msg: ChatMsg) {
+  async function run(msg: ChatMsg, resolvedCommands: string[]) {
     if (msg.role !== "assistant" || !msg.plan) return;
     if (status !== "connected") {
       toast.error("Pair the agent first.");
@@ -124,20 +144,18 @@ function ConsolePage() {
     }
     outputBufRef.current.set(msg.id, "");
     setPendingExecId(msg.id);
-    const ok = exec(msg.id, msg.plan.commands, msg.plan.requires_save);
+    const ok = exec(msg.id, resolvedCommands, msg.plan.requires_save);
     if (!ok) {
       toast.error("Socket not ready.");
       setPendingExecId(null);
     }
-    // record initial row when done (handled in onSocketMsg via supabase insert)
-    // Pre-write a row so the audit log captures even disconnects:
     const { data: u } = await supabase.auth.getUser();
     if (u.user) {
       await supabase.from("command_runs").insert({
         user_id: u.user.id,
         intent: msg.text,
         family,
-        commands: msg.plan.commands,
+        commands: resolvedCommands,
         ok: false,
       });
     }
@@ -153,6 +171,9 @@ function ConsolePage() {
     navigate({ to: "/auth" });
   }
 
+  const paired = status === "connected";
+  const intentSent = messages.some((m) => m.role === "user");
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
       <div className="grid lg:grid-cols-[320px_1fr] gap-8">
@@ -162,7 +183,14 @@ function ConsolePage() {
             device={device}
             onPair={pair}
             onDisconnect={disconnect}
+            initialHost={search.host}
+            initialPort={initialPort}
+            initialCode={search.pair}
+            autoPair={Boolean(search.pair)}
           />
+          {!paired && (
+            <Wizard installed paired={paired} intentSent={intentSent} />
+          )}
           <div className="rounded-2xl bg-white/[0.02] p-5">
             <div className="text-xs uppercase tracking-wider text-white/40 mb-3">Device family</div>
             <select
@@ -195,9 +223,26 @@ function ConsolePage() {
         <section className="flex flex-col min-h-[70vh] rounded-2xl bg-white/[0.015] p-6">
           <div className="flex-1 space-y-6 overflow-y-auto pr-2">
             {messages.length === 0 && (
-              <div className="text-white/40 text-sm">
-                <p className="font-display text-lg text-white/70 mb-2">Ready when you are.</p>
-                <p>Try: <em className="text-primary">"Create VLAN 100 and bind it to port 0/19/0"</em></p>
+              <div className="space-y-5">
+                <div className="text-white/40 text-sm">
+                  <p className="font-display text-lg text-white/70 mb-2">Ready when you are.</p>
+                  <p>Pick a recipe to start, or type plain English below.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {RECIPES.map((r) => (
+                    <button
+                      key={r.label}
+                      type="button"
+                      onClick={() => {
+                        setFamily(r.family);
+                        setInput(r.intent);
+                      }}
+                      className="text-xs rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:border-primary/40 transition px-3 py-1.5 inline-flex items-center gap-1.5"
+                    >
+                      <Sparkles className="h-3 w-3 text-primary/80" /> {r.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {messages.map((m) =>
@@ -210,13 +255,13 @@ function ConsolePage() {
               ) : (
                 <div key={m.id} className="text-sm space-y-3">
                   {m.plan ? (
-                    <PlanBlock
+                    <EditablePlan
                       plan={m.plan}
                       output={m.output}
                       ran={m.ran}
                       ok={m.ok}
                       running={pendingExecId === m.id}
-                      onRun={() => run(m)}
+                      onRun={(resolved) => run(m, resolved)}
                     />
                   ) : (
                     <div className="text-white/70">{m.text}</div>
@@ -250,63 +295,6 @@ function ConsolePage() {
           </form>
         </section>
       </div>
-    </div>
-  );
-}
-
-function PlanBlock({
-  plan,
-  output,
-  ran,
-  ok,
-  running,
-  onRun,
-}: {
-  plan: Plan;
-  output?: string;
-  ran?: boolean;
-  ok?: boolean;
-  running: boolean;
-  onRun: () => void;
-}) {
-  return (
-    <div className="rounded-xl border border-white/5 bg-black/40 overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/5">
-        <div className="text-white/80">{plan.description}</div>
-        {plan.warning && (
-          <div className="mt-1.5 text-xs text-amber-400/90">⚠ {plan.warning}</div>
-        )}
-      </div>
-      {plan.commands.length > 0 && (
-        <pre className="px-4 py-3 text-xs font-mono text-emerald-300/90 whitespace-pre-wrap">
-          {plan.commands.map((c, i) => `${i + 1}. ${c}`).join("\n")}
-        </pre>
-      )}
-      <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/5 bg-white/[0.02]">
-        <div className="text-xs text-white/40">
-          {plan.destructive && <span className="text-amber-400">destructive · </span>}
-          {plan.requires_save ? "writes config" : "read-only"}
-        </div>
-        {plan.commands.length > 0 && !ran && (
-          <button
-            onClick={onRun}
-            disabled={running}
-            className="rounded-md bg-emerald-500/90 text-black px-3 py-1.5 text-xs inline-flex items-center gap-1.5 hover:bg-emerald-400 disabled:opacity-40"
-          >
-            <Play className="h-3 w-3" /> {running ? "Running…" : "Run on device"}
-          </button>
-        )}
-        {ran && (
-          <div className={`text-xs ${ok ? "text-emerald-400" : "text-red-400"}`}>
-            {ok ? "✓ done" : "✕ failed"}
-          </div>
-        )}
-      </div>
-      {output && (
-        <pre className="px-4 py-3 text-[11px] font-mono text-white/60 whitespace-pre-wrap border-t border-white/5 max-h-64 overflow-y-auto">
-          {output}
-        </pre>
-      )}
     </div>
   );
 }
