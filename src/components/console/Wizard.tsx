@@ -94,7 +94,7 @@ export function Wizard({
   );
 }
 
-export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon"; intent: string }[] = [
+export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon" | "mikrotik"; intent: string }[] = [
   {
     label: "Change Wi-Fi password",
     family: "hg",
@@ -125,5 +125,23 @@ export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon";
     label: "Set PPPoE on WAN",
     family: "gpon",
     intent: "Configure WAN as PPPoE with username <pppoe-user> and password <pppoe-pass>, VLAN <vid>.",
+  },
+  {
+    label: "Harden MikroTik SSH",
+    family: "mikrotik",
+    intent:
+      "Harden the router: rename identity to <name>, move SSH to port <port>, disable telnet/ftp/www/api/api-ssl, enable strong-crypto with ed25519 host key, and add admin user <user> with password <password>.",
+  },
+  {
+    label: "MikroTik WireGuard server",
+    family: "mikrotik",
+    intent:
+      "Set up a WireGuard server on interface wg0 listening on UDP <port>, address <server-cidr>, add one peer with public key <peer-pubkey> and allowed-address <peer-cidr>.",
+  },
+  {
+    label: "MikroTik LAN bridge + DHCP + NAT",
+    family: "mikrotik",
+    intent:
+      "Create a LAN bridge with ether2..ether5, assign <lan-cidr> on the bridge, run a DHCP server with pool <pool-start>-<pool-end> and DNS 1.1.1.1, and masquerade out <wan-if>.",
   },
 ];
