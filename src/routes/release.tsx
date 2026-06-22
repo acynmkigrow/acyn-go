@@ -69,7 +69,7 @@ git push -u origin main`} />
       </ol>
 
       <h3>A4. (Optional) Point install.ps1 at your fork</h3>
-      <p>The installer defaults to ACYN's official repo. To install from your own fork, set the <code>ACYN_REPO</code> env var before running the one-liner:</p>
+      <p>The installer defaults to <code>acynmkigrow/acyn-go</code>. To install from a different fork, set the <code>ACYN_REPO</code> env var before running the one-liner:</p>
       <CodeBlock language="powershell" code={`$env:ACYN_REPO = "<your-user>/<your-repo>"
 iwr -useb https://go.acyninnovation.com/install.ps1 | iex`} />
 
