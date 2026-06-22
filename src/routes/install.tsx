@@ -22,8 +22,9 @@ winget install GoLang.Go
 # 2. Enable Telnet client (optional, for legacy OLTs)
 dism /online /Enable-Feature /FeatureName:TelnetClient
 
-# 3. Set your AI API key (Gemini free tier)
-[System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY","YOUR_KEY_HERE","User")
+# 3. Web GUI users do not need an AI key
+# Optional only for standalone CLI mode:
+# [System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY","YOUR_KEY_HERE","User")
 
 # 4. Download latest release binary
 $ver = (iwr https://api.github.com/repos/acyninnovation/acyn-go/releases/latest | ConvertFrom-Json).tag_name
@@ -81,7 +82,7 @@ function Install() {
         <p className="mt-6 text-lg text-white/60 max-w-2xl">
           Open PowerShell as Administrator and paste the command below. The installer detects your
           architecture, fetches the latest signed release from GitHub, adds <code className="text-primary">acyn-go</code> to your PATH,
-          and prompts for your AI key.
+          and opens the paired web console. Web GUI users use the project AI keys automatically.
         </p>
       </FadeUp>
 
@@ -104,7 +105,7 @@ function Install() {
               "Detects your OS and CPU architecture (windows/amd64, linux/amd64, darwin/arm64).",
               "Downloads the latest signed release archive from github.com/acyninnovation/acyn-go.",
               "Extracts to C:\\Tools\\acyn-go (or ~/.local/bin on Unix) and adds it to your user PATH.",
-              "Prompts (optional) for GEMINI_API_KEY or OPENAI_API_KEY and stores it as a user env var.",
+              "Uses the project Gemini key in the web GUI; local AI keys are optional only for standalone CLI mode.",
               "Verifies the install with acyn-go --version.",
             ].map((t) => (
               <li key={t} className="flex gap-3">
