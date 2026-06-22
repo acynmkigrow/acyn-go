@@ -51,6 +51,8 @@ Likely causes:
         git tag -a v1.0.0 -m v1.0.0
         git push origin v1.0.0
     The workflow must finish successfully and upload the Windows zip.
+    If you already pushed v1.0.0 before the workflow existed, push a new tag
+    such as v1.0.1 so GitHub Actions runs again.
   - The repo name is wrong. Override with:
         `$env:ACYN_REPO = "owner/repo"`
         iwr -useb https://go.acyninnovation.com/install.ps1 | iex

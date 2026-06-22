@@ -96,7 +96,7 @@ goreleaser release --snapshot --clean
       <CodeBlock language="bash" code={`cd <repo-root>
 git tag -a v1.2.0 -m "ACYN-Go v1.2.0"
 git push origin v1.2.0`} />
-      <p>That push triggers the root <code>.github/workflows/release.yml</code>, which runs GoReleaser inside <code>agent/</code> with the <code>GITHUB_TOKEN</code> already scoped for releases.</p>
+      <p>That push triggers the root <code>.github/workflows/release.yml</code>, which runs GoReleaser inside <code>agent/</code> with the <code>GITHUB_TOKEN</code> already scoped for releases. If you already pushed a tag before this workflow existed, push a new tag such as <code>v1.0.1</code>.</p>
 
       <h3>4 — Watch CI</h3>
       <p>Go to <code>https://github.com/&lt;your-user&gt;/&lt;your-repo&gt;/actions</code>. The job should finish in 2–4 minutes and produce a draft release with:</p>

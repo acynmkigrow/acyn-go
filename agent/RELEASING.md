@@ -77,6 +77,9 @@ git push origin v1.2.0
 For the current `acynmkigrow/acyn-go` Vercel repo, do this from the full project
 root, not from a separate local `agent/` git repository.
 
+If you already pushed a tag before the root workflow existed, create and push a
+new tag such as `v1.0.1`; GitHub Actions only runs when the tag push happens.
+
 ### 4. CI runs `.github/workflows/release.yml`
 GoReleaser produces:
 - `acyn-go_v1.2.0_windows_amd64.zip`
