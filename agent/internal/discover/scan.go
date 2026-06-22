@@ -32,7 +32,8 @@ type Suggest struct {
 }
 
 // Probe ports, ordered by how informative the banner is.
-var probePorts = []int{22, 23, 80, 443}
+// 8728/8729 are MikroTik API/API-SSL — open ports alone are a strong vendor hint.
+var probePorts = []int{22, 23, 80, 443, 8728, 8729}
 
 // Scan sweeps every reachable RFC1918 /24 the host is attached to.
 // Hard-capped at 8 seconds total. Safe to call repeatedly.
@@ -121,13 +122,26 @@ func Scan(ctx context.Context) ([]Device, error) {
 	devices := make([]Device, 0, len(byIP))
 	for _, d := range byIP {
 		sort.Ints(d.OpenPorts)
+		// Vendor inference fallback: MikroTik API ports open without other banner match.
+		if d.Vendor == "unknown" {
+			for _, p := range d.OpenPorts {
+				if p == 8728 || p == 8729 {
+					d.Vendor = "mikrotik"
+					if d.Family == "" {
+						d.Family = "mikrotik"
+					}
+					break
+				}
+			}
+		}
 		d.Suggested = suggest(d)
 		devices = append(devices, *d)
 	}
-	// Huawei first, then by IP.
+	// Known vendors first (huawei, mikrotik), then by IP.
+	known := func(v string) bool { return v == "huawei" || v == "mikrotik" }
 	sort.Slice(devices, func(i, j int) bool {
-		if (devices[i].Vendor == "huawei") != (devices[j].Vendor == "huawei") {
-			return devices[i].Vendor == "huawei"
+		if known(devices[i].Vendor) != known(devices[j].Vendor) {
+			return known(devices[i].Vendor)
 		}
 		return ipLess(devices[i].IP, devices[j].IP)
 	})

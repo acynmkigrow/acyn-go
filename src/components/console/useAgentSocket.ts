@@ -13,7 +13,7 @@ export type DiscoveredDevice = {
   ip: string;
   openPorts: number[];
   vendor: "huawei" | "unknown" | string;
-  family: Family | "";
+  family: Family | "swos" | "";
   banner: string;
   suggested: { protocol: "ssh" | "telnet" | string; port: number; username: string };
 };

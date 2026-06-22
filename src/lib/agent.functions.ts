@@ -15,7 +15,7 @@ export type Plan = z.infer<typeof PlanSchema>;
 
 const InputSchema = z.object({
   intent: z.string().min(1).max(2000),
-  family: z.enum(["hg", "gpon", "xpon", "olt", "switch"]),
+  family: z.enum(["hg", "gpon", "xpon", "olt", "switch", "mikrotik"]),
   device_model: z.string().max(120).optional(),
   recent_output: z.string().max(4000).optional(),
 });
@@ -60,7 +60,7 @@ export const planConfig = createServerFn({ method: "POST" })
           },
         } as const;
       }
-      if (plan.requires_save && plan.commands.length > 0) {
+      if (plan.requires_save && plan.commands.length > 0 && data.family !== "mikrotik") {
         const last = plan.commands[plan.commands.length - 1].trim().toLowerCase();
         if (last !== "save" && last !== "save y") {
           plan.commands.push("save");

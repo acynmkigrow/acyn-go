@@ -205,6 +205,7 @@ function ConsolePage() {
               <option value="xpon">XPON ONT</option>
               <option value="olt">OLT (MA5800/MA5600T)</option>
               <option value="switch">Switch (S5700/S6700)</option>
+              <option value="mikrotik">MikroTik RouterOS (CCR/CRS/RB/hAP)</option>
             </select>
             <p className="mt-3 text-xs text-white/40">Auto-detected when paired.</p>
           </div>
