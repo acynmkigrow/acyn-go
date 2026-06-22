@@ -94,7 +94,7 @@ export function Wizard({
   );
 }
 
-export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon" | "mikrotik"; intent: string }[] = [
+export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon" | "mikrotik" | "cisco"; intent: string }[] = [
   {
     label: "Change Wi-Fi password",
     family: "hg",
@@ -143,5 +143,17 @@ export const RECIPES: { label: string; family: "hg" | "olt" | "switch" | "gpon" 
     family: "mikrotik",
     intent:
       "Create a LAN bridge with ether2..ether5, assign <lan-cidr> on the bridge, run a DHCP server with pool <pool-start>-<pool-end> and DNS 1.1.1.1, and masquerade out <wan-if>.",
+  },
+  {
+    label: "Cisco access port + VLAN",
+    family: "cisco",
+    intent:
+      "On switch interface GigabitEthernet0/<port>, set it as an access port on VLAN <vid>, name the VLAN \"<name>\", and save.",
+  },
+  {
+    label: "Cisco trunk uplink",
+    family: "cisco",
+    intent:
+      "Configure GigabitEthernet0/<port> as a dot1q trunk allowing VLANs <vid-list>, and save.",
   },
 ];
