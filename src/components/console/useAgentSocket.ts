@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentInfo } from "./PairingCard";
+import type { Family } from "@/lib/huawei-prompts";
 
 export type ExecMessage =
   | { type: "device"; vendor: string; model: string; family: AgentInfo["family"]; prompt: string }
@@ -8,8 +9,29 @@ export type ExecMessage =
 
 export type SocketStatus = "idle" | "pairing" | "connected" | "error";
 
+export type DiscoveredDevice = {
+  ip: string;
+  openPorts: number[];
+  vendor: "huawei" | "unknown" | string;
+  family: Family | "";
+  banner: string;
+  suggested: { protocol: "ssh" | "telnet" | string; port: number; username: string };
+};
+
+export type ConnectCreds = {
+  ip: string;
+  port: number;
+  protocol: "ssh" | "telnet";
+  username: string;
+  password: string;
+  family: Family;
+  sshLegacy?: boolean;
+};
+
 export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
   const wsRef = useRef<WebSocket | null>(null);
+  const tokenRef = useRef<string | null>(null);
+  const endpointRef = useRef<{ host: string; port: number } | null>(null);
   const [status, setStatus] = useState<SocketStatus>("idle");
   const [device, setDevice] = useState<AgentInfo | null>(null);
   const onMessageRef = useRef(onMessage);
@@ -25,6 +47,8 @@ export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
       });
       if (!resp.ok) throw new Error("pair " + resp.status);
       const { token } = (await resp.json()) as { token: string };
+      tokenRef.current = token;
+      endpointRef.current = { host, port };
 
       const ws = new WebSocket(`ws://${host}:${port}/session?token=${encodeURIComponent(token)}`);
       wsRef.current = ws;
@@ -45,6 +69,7 @@ export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
         setStatus("idle");
         setDevice(null);
         wsRef.current = null;
+        tokenRef.current = null;
       };
     } catch {
       setStatus("error");
@@ -62,7 +87,41 @@ export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
     wsRef.current?.close();
   }, []);
 
+  const discover = useCallback(async (): Promise<DiscoveredDevice[]> => {
+    const ep = endpointRef.current;
+    const token = tokenRef.current;
+    if (!ep || !token) throw new Error("Pair the agent first.");
+    const resp = await fetch(
+      `http://${ep.host}:${ep.port}/discover?token=${encodeURIComponent(token)}`,
+    );
+    if (!resp.ok) throw new Error("discover " + resp.status);
+    const data = (await resp.json()) as { devices: DiscoveredDevice[] };
+    return data.devices ?? [];
+  }, []);
+
+  const connectDevice = useCallback(
+    async (creds: ConnectCreds): Promise<{ ok: boolean; error?: string }> => {
+      const ep = endpointRef.current;
+      const token = tokenRef.current;
+      if (!ep || !token) return { ok: false, error: "Pair the agent first." };
+      const resp = await fetch(
+        `http://${ep.host}:${ep.port}/connect?token=${encodeURIComponent(token)}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(creds),
+        },
+      );
+      const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!resp.ok || !body.ok) {
+        return { ok: false, error: body.error || `connect ${resp.status}` };
+      }
+      return { ok: true };
+    },
+    [],
+  );
+
   useEffect(() => () => wsRef.current?.close(), []);
 
-  return { status, device, pair, exec, disconnect };
+  return { status, device, pair, exec, disconnect, discover, connectDevice };
 }

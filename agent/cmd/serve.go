@@ -15,31 +15,39 @@ import (
 	"github.com/acyninnovation/acyn-go/internal/transport"
 )
 
-// RunServe wires up a device connection and serves the WS bridge until the
-// process is interrupted.
+// RunServe starts the WS bridge. When sess is non-nil it eagerly dials the
+// device; when sess is nil it starts with no device and waits for the web
+// console to call POST /connect (--web mode).
 func RunServe(ctx context.Context, sess *config.Session, host string, port int) error {
-	prof := devices.Get(sess.DeviceType)
-
 	var conn transport.Conn
-	var err error
-	switch sess.Protocol {
-	case "ssh":
-		conn, err = transport.DialSSH(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts, sess.SSHLegacy)
-	default:
-		conn, err = transport.DialTelnet(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts)
-	}
-	if err != nil {
-		return fmt.Errorf("device connect: %w", err)
-	}
-	defer conn.Close()
+	var dev server.DeviceInfo
 
-	dev := server.DeviceInfo{
-		Vendor: "huawei",
-		Model:  sess.DeviceType,
-		Family: sess.DeviceType,
-		Prompt: firstPrompt(prof.Prompts),
+	if sess != nil {
+		prof := devices.Get(sess.DeviceType)
+		var err error
+		switch sess.Protocol {
+		case "ssh":
+			conn, err = transport.DialSSH(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts, sess.SSHLegacy)
+		default:
+			conn, err = transport.DialTelnet(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts)
+		}
+		if err != nil {
+			return fmt.Errorf("device connect: %w", err)
+		}
+		dev = server.DeviceInfo{
+			Vendor: "huawei",
+			Model:  sess.DeviceType,
+			Family: sess.DeviceType,
+			Prompt: firstPrompt(prof.Prompts),
+		}
 	}
+
 	srv := server.New(host, port, conn, dev)
+	defer func() {
+		if conn != nil {
+			_ = conn.Close()
+		}
+	}()
 
 	deepLink := fmt.Sprintf(
 		"https://go.acyninnovation.com/console?pair=%s&host=%s&port=%d",
@@ -53,6 +61,10 @@ func RunServe(ctx context.Context, sess *config.Session, host string, port int) 
 	fmt.Println("│  Click to auto-pair this browser:                          │")
 	fmt.Printf("│  %s\n", deepLink)
 	fmt.Println("│  (or paste the 6-digit code in the console)                │")
+	if sess == nil {
+		fmt.Println("│                                                            │")
+		fmt.Println("│  No device attached — discover & connect from the browser. │")
+	}
 	fmt.Println("└────────────────────────────────────────────────────────────┘")
 	fmt.Println()
 

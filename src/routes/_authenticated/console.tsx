@@ -9,6 +9,7 @@ import { PairingCard } from "@/components/console/PairingCard";
 import { useAgentSocket, type ExecMessage } from "@/components/console/useAgentSocket";
 import { EditablePlan } from "@/components/console/EditablePlan";
 import { Wizard, RECIPES } from "@/components/console/Wizard";
+import { DiscoverPanel } from "@/components/console/DiscoverPanel";
 import type { Family } from "@/lib/huawei-prompts";
 
 export const Route = createFileRoute("/_authenticated/console")({
@@ -82,7 +83,7 @@ function ConsolePage() {
     }
   }, [family]);
 
-  const { status, device, pair, exec, disconnect } = useAgentSocket(onSocketMsg);
+  const { status, device, pair, exec, disconnect, discover, connectDevice } = useAgentSocket(onSocketMsg);
 
   // Sync family from connected device
   useEffect(() => {
@@ -191,6 +192,7 @@ function ConsolePage() {
           {!paired && (
             <Wizard installed paired={paired} intentSent={intentSent} />
           )}
+          {paired && <DiscoverPanel onDiscover={discover} onConnect={connectDevice} />}
           <div className="rounded-2xl bg-white/[0.02] p-5">
             <div className="text-xs uppercase tracking-wider text-white/40 mb-3">Device family</div>
             <select
