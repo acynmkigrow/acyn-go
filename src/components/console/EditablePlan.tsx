@@ -68,11 +68,9 @@ export function EditablePlan({
   );
 
   const unresolved = useMemo(
-    () => resolvedCommands.filter((c) => PLACEHOLDER_RE.test(c)),
+    () => resolvedCommands.filter((c) => /<([a-zA-Z][\w-]*)>|\b(TBD|TODO|FILL_ME)\b/.test(c)),
     [resolvedCommands],
   );
-  // ^ test() with /g flag advances lastIndex; reset each pass.
-  PLACEHOLDER_RE.lastIndex = 0;
 
   const hasPlaceholders = placeholderNames.length > 0;
   const canRun = !ran && !running && plan.commands.length > 0 && unresolved.length === 0;
