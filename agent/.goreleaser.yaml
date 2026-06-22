@@ -1,3 +1,5 @@
+version: 2
+
 project_name: acyn-go
 
 before:
@@ -14,13 +16,15 @@ builds:
       - -s -w -X main.version={{.Version}}
     goos: [linux, windows, darwin]
     goarch: [amd64, arm64]
+    goamd64: [v1]
 
 archives:
   - id: default
     name_template: "acyn-go_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 checksum:
   name_template: "checksums.txt"

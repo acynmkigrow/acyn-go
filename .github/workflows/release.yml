@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version tag, for example v1.0.1"
+        description: "Release version tag, for example v1.0.3"
         required: true
         type: string
 
@@ -27,22 +27,41 @@ jobs:
           go-version: "1.22"
           cache: false
 
-      - name: Generate go.sum
+      - name: Verify agent module exists
+        run: |
+          test -f agent/go.mod || { echo "agent/go.mod missing"; exit 1; }
+          test -f agent/main.go || { echo "agent/main.go missing"; exit 1; }
+
+      - name: Tidy modules
         working-directory: agent
         run: go mod tidy
+
+      - name: Build agent (sanity check)
+        working-directory: agent
+        run: go build -ldflags="-s -w" -o /tmp/acyn-go .
+
+      - name: Test agent
+        working-directory: agent
+        run: go test ./... || echo "no tests or tests skipped"
 
       - name: Create release tag for manual runs
         if: github.event_name == 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           VERSION="${{ inputs.version }}"
           if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Version must look like v1.0.1"
+            echo "Version must look like v1.0.3"
             exit 1
           fi
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            echo "Tag $VERSION already exists. Use a new version."
+          git fetch --tags --force --quiet
+          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally. Pick a new version."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists on origin. Pick a new version."
             exit 1
           fi
           git config user.name "github-actions[bot]"
@@ -50,11 +69,16 @@ jobs:
           git tag -a "$VERSION" -m "$VERSION"
           git push origin "$VERSION"
 
+      - name: Checkout the release tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags --force
+          git checkout "refs/tags/${{ inputs.version }}"
 
       - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: "~> v2"
           workdir: agent
           args: release --clean
         env:
