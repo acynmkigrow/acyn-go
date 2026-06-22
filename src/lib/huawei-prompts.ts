@@ -1,6 +1,6 @@
 // Shared between server fn and client validators. No server-only imports here.
 
-export type Family = "hg" | "gpon" | "xpon" | "olt" | "switch";
+export type Family = "hg" | "gpon" | "xpon" | "olt" | "switch" | "mikrotik";
 
 export const FAMILY_HINTS: Record<Family, string> = {
   olt: `Target: Huawei MA5800 / MA5600T OLT.
@@ -36,6 +36,18 @@ export const FAMILY_HINTS: Record<Family, string> = {
 - LACP: interface Eth-Trunk <N> -> mode lacp-static -> trunkport GigabitEthernet 0/0/<x> to 0/0/<y>
 - Save: save  then Y to confirm
 - NEVER: clear configuration this, reset saved-configuration, reboot`,
+  mikrotik: `Target: MikroTik RouterOS (v6/v7) — CCR, CRS (RouterOS mode), RB, hAP, cAP, wAP, Chateau.
+SYNTAX: one statement per line, hierarchical paths starting with '/'. NO 'enable', NO 'config', NO 'save' — RouterOS auto-persists. Set requires_save: false.
+- Hardening: /system identity set name=<n>; /ip service set ssh port=<n>; /ip service set telnet,ftp,www,api,api-ssl disabled=yes; /user add name=<u> group=full password="<pw>"; /ip ssh set strong-crypto=yes host-key-type=ed25519 allow-none-crypto=no.
+- L2: /interface bridge add name=BR vlan-filtering=yes; /interface bridge port add bridge=BR interface=ether<n> pvid=<vid>; /interface vlan add name=VLAN<id> interface=BR vlan-id=<id>.
+- L3/Edge: /ip address add address=<cidr> interface=<if>; /ip route add gateway=<gw>; /ip pool add name=<p> ranges=<a>-<b>; /ip dhcp-server add address-pool=<p> interface=<if> name=<n> disabled=no; /ip dhcp-server network add address=<cidr> dns-server=<dns> gateway=<gw>; /ip firewall nat add chain=srcnat action=masquerade out-interface=<wan>.
+- WireGuard (v7): /interface wireguard add name=wg0 listen-port=51820 private-key="<priv>"; /interface wireguard peers add interface=wg0 public-key="<pub>" allowed-address=<cidr> endpoint-address=<ip> endpoint-port=51820; /ip address add interface=wg0 address=<cidr>.
+- RADIUS: /radius add service=login,hotspot,ppp address=<ip> secret="<s>"; /user aaa set use-radius=yes; /ip hotspot profile set <p> use-radius=yes.
+- SMS (LTE/Chateau): /tool sms send <lte-if> phone-number=<num> message="<text>"; /tool sms inbox print; /interface lte set <if> apn-profiles=<p>.
+- PPP secrets: /ppp secret add name=<u> password=<pw> service=pppoe profile=<prof>.
+- Queues: /queue simple add name=<n> target=<cidr> max-limit=<up>/<down>.
+- Read-only: append 'print' (e.g. '/ip address print').
+- FORBIDDEN unless user typed the same verb: /system reset-configuration, /system reboot, /system shutdown, /file remove, /user remove, /interface remove, /system routerboard reset-configuration, unfiltered 'remove [find]'.`,
 };
 
 export const SYSTEM_PROMPT = `You are ACYN-Go, an expert Huawei carrier and home-network CLI assistant.
@@ -70,6 +82,14 @@ const DESTRUCTIVE_PATTERNS = [
   /\bformat\s+flash\b/i,
   /\breboot\b/i,
   /\berase\b/i,
+  // MikroTik
+  /\/system\s+reset-configuration\b/i,
+  /\/system\s+reboot\b/i,
+  /\/system\s+shutdown\b/i,
+  /\/system\s+routerboard\s+reset-configuration\b/i,
+  /\/file\s+remove\b/i,
+  /\/user\s+remove\b/i,
+  /\/interface\s+remove\b/i,
 ];
 
 export function validateCommands(commands: string[], intent: string): { ok: boolean; reason?: string } {
