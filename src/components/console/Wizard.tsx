@@ -24,7 +24,7 @@ export function Wizard({
     },
     {
       id: "serve",
-      title: "Run the agent and connect to your device",
+      title: "Run the agent",
       done: paired,
       body: (
         <>
@@ -32,20 +32,20 @@ export function Wizard({
             acyn-go serve
           </code>
           <p className="mt-1 text-[11px] text-white/40">
-            Enter device IP, protocol, credentials. The agent prints a 6-digit pair code
-            and a clickable pair link.
+            Your browser opens automatically and pairs in one click — no codes to type. Add{" "}
+            <code className="text-white/60">--cli</code> for the legacy interactive prompts.
           </p>
         </>
       ),
     },
     {
       id: "pair",
-      title: "Pair this browser",
+      title: "Pick your device",
       done: paired,
       body: (
         <p className="mt-1 text-[11px] text-white/40">
-          Paste the 6-digit code into the card on the left — or click the link printed in
-          your terminal and it auto-pairs.
+          The console scans your LAN for Huawei, MikroTik, and Cisco devices. Click one, enter
+          credentials, and you're connected.
         </p>
       ),
     },
