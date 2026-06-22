@@ -55,8 +55,8 @@ function Guide() {
         <Section id="prereqs" title="1. Prerequisites">
           <p>Open PowerShell as Administrator and run:</p>
           <CodeBlock code={`winget install GoLang.Go\nwinget install Git.Git\ndism /online /Enable-Feature /FeatureName:TelnetClient\nAdd-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0`} language="powershell" />
-          <p>Grab a free AI key from <a className="text-primary hover:underline" href="https://aistudio.google.com" target="_blank" rel="noreferrer">Google AI Studio</a> (Gemini Flash, 60 req/min free) or <a className="text-primary hover:underline" href="https://platform.openai.com" target="_blank" rel="noreferrer">OpenAI</a>, then export it:</p>
-          <CodeBlock code={`[System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY","YOUR_KEY_HERE","User")`} language="powershell" />
+          <p>The web GUI uses the project Gemini key automatically. Only set a local AI key if you run the CLI fully standalone without the browser console:</p>
+          <CodeBlock code={`[System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY","YOUR_KEY_HERE","User") # optional CLI-only`} language="powershell" />
         </Section>
 
         <Section id="structure" title="2. Project Structure">
@@ -119,7 +119,7 @@ acyn-go> Save a backup of the current configuration to device flash`} language="
               <tbody className="divide-y divide-white/5 text-white/75">
                 <tr><td className="py-3 pr-6">Connection refused on port 23</td><td className="py-3 pr-6">Telnet disabled on device</td><td className="py-3">Enable Telnet service via serial/web UI</td></tr>
                 <tr><td className="py-3 pr-6">Auth failed over SSH</td><td className="py-3 pr-6">Modern Huawei OLTs need legacy KEX</td><td className="py-3">Pass <code>--ssh-legacy</code> flag</td></tr>
-                <tr><td className="py-3 pr-6">API key error from Gemini</td><td className="py-3 pr-6">Env var not set in current shell</td><td className="py-3"><code>$env:GEMINI_API_KEY="..."</code></td></tr>
+                <tr><td className="py-3 pr-6">Planner says AI is not configured</td><td className="py-3 pr-6">Project server secret is missing or not deployed</td><td className="py-3">Check project secrets for <code>GEMINI_API_KEY</code></td></tr>
                 <tr><td className="py-3 pr-6">Hangs after first command</td><td className="py-3 pr-6">Prompt regex didn't match</td><td className="py-3">Use <code>--debug</code> to dump raw output</td></tr>
               </tbody>
             </table>
