@@ -4,19 +4,28 @@
   One-line installer for ACYN-Go.
 .DESCRIPTION
   Detects architecture, downloads the latest signed release from GitHub,
-  extracts to C:\Tools\acyn-go, adds it to the user PATH, and optionally
+  extracts to %LOCALAPPDATA%\acyn-go, adds it to the user PATH, and optionally
   prompts for a Gemini or OpenAI API key.
 
-  Usage:
+  Usage (default — ACYN's official build):
+    iwr -useb https://go.acyninnovation.com/install.ps1 | iex
+
+  Usage (your own fork):
+    $env:ACYN_REPO = "yourgithubuser/yourrepo"
     iwr -useb https://go.acyninnovation.com/install.ps1 | iex
 #>
 
 $ErrorActionPreference = 'Stop'
 
+# Repo can be overridden with $env:ACYN_REPO = "owner/name"
+$repo = if ($env:ACYN_REPO) { $env:ACYN_REPO } else { 'acyninnovation/acyn-go' }
+$RepoOwner, $RepoName = $repo.Split('/', 2)
+
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host " ACYN-Go installer" -ForegroundColor Cyan
 Write-Host " AI-Powered Huawei Device Configuration Agent" -ForegroundColor DarkCyan
+Write-Host " Source: $RepoOwner/$RepoName" -ForegroundColor DarkGray
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -28,14 +37,14 @@ Write-Host "[1/5] Detected platform: windows/$arch" -ForegroundColor Green
 # 2. Resolve latest release
 Write-Host "[2/5] Resolving latest release..." -ForegroundColor Green
 try {
-  $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/acyninnovation/acyn-go/releases/latest' -UseBasicParsing
+  $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$RepoOwner/$RepoName/releases/latest" -UseBasicParsing
   $tag = $rel.tag_name
 } catch {
   Write-Warning "Could not reach GitHub API; falling back to tag v1.0.0"
   $tag = 'v1.0.0'
 }
 $asset = "acyn-go_${tag}_windows_${arch}.zip"
-$url   = "https://github.com/acyninnovation/acyn-go/releases/download/$tag/$asset"
+$url   = "https://github.com/$RepoOwner/$RepoName/releases/download/$tag/$asset"
 Write-Host "       $url"
 
 # 3. Download + extract
