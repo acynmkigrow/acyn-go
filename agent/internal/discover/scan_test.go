@@ -17,6 +17,7 @@ func TestClassify(t *testing.T) {
 		{"mikrotik-http", "HTTP/1.1 200 OK\r\nServer: Mikrotik HttpProxy", "mikrotik", "mikrotik"},
 		{"mikrotik-routeros", "RouterOS 7.10 (stable) login:", "mikrotik", "mikrotik"},
 		{"swos", "SwOS v2.16 login:", "mikrotik", "swos"},
+	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			v, f := classify(c.banner)
