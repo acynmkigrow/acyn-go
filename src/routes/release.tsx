@@ -69,7 +69,7 @@ git push -u origin main`} />
       </ol>
 
       <h3>A4. (Optional) Point install.ps1 at your fork</h3>
-      <p>The installer defaults to ACYN's official repo. To install from your own fork, set the <code>ACYN_REPO</code> env var before running the one-liner:</p>
+      <p>The installer defaults to <code>acynmkigrow/acyn-go</code>. To install from a different fork, set the <code>ACYN_REPO</code> env var before running the one-liner:</p>
       <CodeBlock language="powershell" code={`$env:ACYN_REPO = "<your-user>/<your-repo>"
 iwr -useb https://go.acyninnovation.com/install.ps1 | iex`} />
 
@@ -170,7 +170,7 @@ TTL:   Auto`} />
       <ul>
         <li><code>agent/.github/workflows/release.yml</code> — CI trigger on <code>v*</code> tags.</li>
         <li><code>agent/.goreleaser.yaml</code> — build matrix and archive naming. Owner/name auto-detected from <code>git remote origin</code>, so forks just work.</li>
-        <li><code>public/install.ps1</code> — Windows one-liner. Defaults to <code>acyninnovation/acyn-go</code>; override with <code>$env:ACYN_REPO</code>.</li>
+        <li><code>public/install.ps1</code> — Windows one-liner. Defaults to <code>acynmkigrow/acyn-go</code>; override with <code>$env:ACYN_REPO</code>.</li>
         <li><code>vercel.json</code> — Vercel build config; sets <code>NITRO_PRESET=vercel</code> only when building on Vercel.</li>
       </ul>
     </article>

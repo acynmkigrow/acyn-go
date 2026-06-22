@@ -1,108 +1,33 @@
-# Plan: Better GitHub guide, generic repo owner, Vercel hosting
+## Fix the installer 404
 
-## 1. Make repo owner generic (no more hardcoded `acyninnovation`)
+Two things are wrong:
 
-The agent currently bakes `acyninnovation/acyn-go` into three places. Replace with a configurable owner so anyone can fork/push to their own GitHub account.
+1. **Hardcoded default repo** — `public/install.ps1` defaults to `acyninnovation/acyn-go`. Since `go.acyninnovation.com` now serves *your* deployment, the default should point at your fork `acynmkigrow/acyn-go`.
+2. **Bogus `v1.0.0` fallback** — when the GitHub API call fails (rate limit, no releases yet, network), the script silently falls back to tag `v1.0.0` and tries to download an asset that doesn't exist → the `Not Found` you saw. The API call most likely succeeded against `acyninnovation/acyn-go` and returned a tag, but that repo's release assets aren't named the way the script expects — either way the fallback hides the real problem.
 
-**Files to update:**
-- `agent/.goreleaser.yaml` — remove the hardcoded `release.github.owner/name` block. GoReleaser auto-detects the repo from `git remote origin`, so dropping the block makes it work for any fork.
-- `public/install.ps1` — replace the hardcoded `acyninnovation/acyn-go` URL with a `$RepoOwner` / `$RepoName` variable pair at the top of the script (defaults preserved for ACYN's own users, but overridable via env var `ACYN_REPO=myuser/myfork` before piping to `iex`).
-- `agent/RELEASING.md` — replace `acyninnovation/acyn-go` references with `<your-github-user>/<repo-name>` placeholders and a one-line note: "These examples use ACYN's repo; substitute your own owner/repo if you forked."
+### Changes to `public/install.ps1`
 
-## 2. Rewrite the GitHub setup guide (`src/routes/release.tsx`)
+- Change the default at the top from `'acyninnovation/acyn-go'` to `'acynmkigrow/acyn-go'`.
+- Remove the `v1.0.0` fallback. If the GitHub API call fails, print a clear error explaining how to override with `$env:ACYN_REPO` and exit. No silent guessing.
+- After resolving the tag, do a `HEAD` request on the asset URL first; if it 404s, print the exact asset name expected vs. what's on the release page and exit.
 
-Current "GitHub repository setup (one-time)" section is 4 vague bullets. Replace with a full **Part A — First-time GitHub setup** section before the existing release-cutting steps, with literal click paths and screenshots-worth of detail:
+### Changes to `agent/RELEASING.md` and `src/routes/release.tsx`
 
-**A1. Create the GitHub repo**
-- Go to `https://github.com/new`
-- **Owner** dropdown → pick your personal account or org
-- **Repository name** → e.g. `acyn-go` (any name works; the installer URL just has to match)
-- **Visibility** → Public (required for the install.ps1 one-liner to work without auth; Private works too but users need a PAT)
-- Leave "Add a README", `.gitignore`, license **unchecked** — we already have those
-- Click green **Create repository** button
+- Update the example `$env:ACYN_REPO` line to use `acynmkigrow/acyn-go` as the example, and clarify that the bare `iwr ... | iex` now defaults to your fork.
 
-**A2. Push the `agent/` folder as the repo root**
-Two paths depending on whether the user already has the code locally:
+### What you'll need to do on GitHub (one-time, outside the code)
 
-*Path 1 — fresh clone from Lovable's GitHub mirror:*
-```bash
-git clone https://github.com/<lovable-user>/<lovable-project>.git
-cd <lovable-project>
-git subtree push --prefix=agent https://github.com/<your-user>/<your-repo>.git main
-```
+Even after the fix, the installer needs a real release on `acynmkigrow/acyn-go` with assets named `acyn-go_<tag>_windows_amd64.zip`. To create one:
 
-*Path 2 — push directly from the agent folder:*
-```bash
-cd agent
-git init -b main
-git remote add origin https://github.com/<your-user>/<your-repo>.git
-git add .
-git commit -m "Initial commit"
-git push -u origin main
-```
+1. Push a tag from your `agent/` folder: `git tag -a v1.0.0 -m "v1.0.0" && git push origin v1.0.0`
+2. The `.github/workflows/release.yml` workflow runs GoReleaser, which auto-detects `acynmkigrow/acyn-go` from `git remote origin` (we already removed the hardcoded owner) and uploads the correctly-named zip.
+3. Re-run `iwr -useb https://go.acyninnovation.com/install.ps1 | iex` — it'll find the release and install.
 
-**A3. Enable write permissions for the release workflow**
-- Open your repo on github.com
-- Click **Settings** (top nav, far right — next to Insights)
-- Left sidebar → **Actions** → **General**
-- Scroll to **Workflow permissions**
-- Select **Read and write permissions**
-- Tick **Allow GitHub Actions to create and approve pull requests**
-- Click **Save**
+If you'd rather not cut a release yet, you can also test against any other repo of yours that has matching assets via `$env:ACYN_REPO = "owner/repo"` before the `iwr` call.
 
-**A4. (Optional) Configure the install.ps1 URL for your fork**
-- If you're hosting your own copy, set `$env:ACYN_REPO = "youruser/yourrepo"` before piping to `iex`, or edit the two variables at the top of `install.ps1`.
+### Files touched
+- `public/install.ps1` (edit)
+- `agent/RELEASING.md` (edit — example only)
+- `src/routes/release.tsx` (edit — example only)
 
-Existing Parts 1–7 (Prep → Hotfix flow) stay as-is, with two tweaks:
-- Section "Files that govern the release" gets a one-liner clarifying that `acyninnovation/acyn-go` in `install.ps1` is just a default — anyone can override.
-- Add a tiny callout at the top: "These steps work for any GitHub account/org — substitute your owner/repo wherever you see `<your-user>/<your-repo>`."
-
-## 3. Mirror the same updates into `agent/RELEASING.md`
-
-The in-repo README version should match the web guide so people reading the source see the same instructions. Replace the terse "One-time GitHub setup" section with the A1–A4 walkthrough above (shortened markdown form).
-
-## 4. Add Vercel hosting for `go.acyninnovation.com`
-
-The site is a TanStack Start app. The Lovable Vite preset defaults Nitro to Cloudflare; Vercel needs the Vercel preset. We'll switch presets only when building on Vercel so the Lovable preview keeps working.
-
-**New file: `vercel.json`** (project root)
-```json
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "bun run build",
-  "outputDirectory": ".output/public",
-  "framework": null,
-  "installCommand": "bun install",
-  "build": {
-    "env": {
-      "NITRO_PRESET": "vercel"
-    }
-  },
-  "trailingSlash": false
-}
-```
-
-`NITRO_PRESET=vercel` is read by the Nitro build inside `@lovable.dev/vite-tanstack-config` and switches the output to Vercel's expected structure (`.output/server` + `.output/public`). Lovable's own build doesn't set this env var, so the preview/published Lovable URL stays on Cloudflare — no breakage.
-
-**New section in `src/routes/release.tsx` — "Hosting the docs site on Vercel"** with explicit clicks:
-1. Push this project to GitHub (Plus menu → GitHub → Connect, in Lovable).
-2. Go to `https://vercel.com/new`
-3. Click **Import** next to your repo
-4. **Framework Preset** → leave as **Other** (vercel.json overrides it)
-5. **Build & Output Settings** → leave defaults (vercel.json controls them)
-6. **Environment Variables** → add any Lovable Cloud / Supabase keys the app needs at runtime (list what's in `.env` minus secrets)
-7. Click **Deploy**
-8. After first deploy: **Project → Settings → Domains → Add** → enter `go.acyninnovation.com`
-9. In your DNS provider, add the `CNAME` record Vercel shows (typically `cname.vercel-dns.com`)
-10. Wait for DNS + SSL (1–10 min); Vercel auto-provisions the cert
-
-Plus a troubleshooting subsection: SSR 500s → check `NITRO_PRESET` is set in Vercel env; build fails on `bun install` → switch installCommand to `npm install` if Bun isn't enabled in the Vercel project.
-
-## Files touched
-- `agent/.goreleaser.yaml` (edit — drop hardcoded owner/name)
-- `public/install.ps1` (edit — variables + ACYN_REPO env override)
-- `agent/RELEASING.md` (edit — expanded one-time setup)
-- `src/routes/release.tsx` (edit — new Part A walkthrough + Vercel section)
-- `vercel.json` (new)
-
-No DB changes, no new deps, no agent runtime behavior changes.
+No backend, DB, or agent runtime changes.

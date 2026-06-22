@@ -18,7 +18,7 @@
 $ErrorActionPreference = 'Stop'
 
 # Repo can be overridden with $env:ACYN_REPO = "owner/name"
-$repo = if ($env:ACYN_REPO) { $env:ACYN_REPO } else { 'acyninnovation/acyn-go' }
+$repo = if ($env:ACYN_REPO) { $env:ACYN_REPO } else { 'acynmkigrow/acyn-go' }
 $RepoOwner, $RepoName = $repo.Split('/', 2)
 
 Write-Host ""
@@ -40,8 +40,20 @@ try {
   $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$RepoOwner/$RepoName/releases/latest" -UseBasicParsing
   $tag = $rel.tag_name
 } catch {
-  Write-Warning "Could not reach GitHub API; falling back to tag v1.0.0"
-  $tag = 'v1.0.0'
+  Write-Host ""
+  Write-Error @"
+Could not resolve the latest release for $RepoOwner/$RepoName.
+
+Likely causes:
+  - The repo has no published releases yet. Cut one by pushing a git tag
+    (e.g. ``git tag -a v1.0.0 -m v1.0.0 && git push origin v1.0.0``) so the
+    release workflow runs and uploads the Windows zip.
+  - The repo name is wrong. Override with:
+        `$env:ACYN_REPO = "owner/repo"`
+        iwr -useb https://go.acyninnovation.com/install.ps1 | iex
+  - GitHub API rate limit. Wait a minute and retry.
+"@
+  exit 1
 }
 $asset = "acyn-go_${tag}_windows_${arch}.zip"
 $url   = "https://github.com/$RepoOwner/$RepoName/releases/download/$tag/$asset"
@@ -52,7 +64,19 @@ $dest = "$env:USERPROFILE\AppData\Local\acyn-go"
 $tmp  = Join-Path $env:TEMP "acyn-go.zip"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 Write-Host "[3/5] Downloading..." -ForegroundColor Green
-Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+try {
+  Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+} catch {
+  Write-Host ""
+  Write-Error @"
+Download failed: $url
+
+The release $tag exists but no asset named ``$asset`` was found on it.
+Check https://github.com/$RepoOwner/$RepoName/releases/tag/$tag and confirm
+the GoReleaser workflow ran and uploaded the Windows archive.
+"@
+  exit 1
+}
 Write-Host "       Extracting to $dest"
 Expand-Archive -LiteralPath $tmp -DestinationPath $dest -Force
 Remove-Item $tmp -Force
