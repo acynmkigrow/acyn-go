@@ -40,8 +40,12 @@ function ReleasePage() {
         <li>Click the green <strong>Create repository</strong> button.</li>
       </ol>
 
-      <h3>A2. Push the <code>agent/</code> folder as the repo root</h3>
-      <p>The agent code lives in the <code>agent/</code> subdirectory of this Lovable project. Pick whichever path matches your setup.</p>
+      <h3>A2. Push the code to GitHub</h3>
+      <p>
+        If this whole Lovable/Vercel project is your GitHub repo, keep it that way. The root
+        <code> .github/workflows/release.yml</code> file builds the Go agent from <code>agent/</code> and publishes the release assets.
+        Only use the commands below if you want a separate agent-only repo.
+      </p>
 
       <p><strong>Path 1 — you already cloned this Lovable project from GitHub:</strong></p>
       <CodeBlock language="bash" code={`cd <lovable-project>
@@ -55,7 +59,7 @@ git add .
 git commit -m "Initial ACYN-Go release"
 git push -u origin main`} />
 
-      <p>Refresh the GitHub repo page — you should now see <code>main.go</code>, <code>internal/</code>, <code>.github/</code>, <code>.goreleaser.yaml</code>, etc. at the root.</p>
+      <p>Refresh the GitHub repo page — for an agent-only repo you should see <code>main.go</code>, <code>internal/</code>, <code>.github/</code>, <code>.goreleaser.yaml</code>, etc. at the root.</p>
 
       <h3>A3. Give Actions permission to publish releases</h3>
       <p>Without this, GoReleaser fails with <code>403 Resource not accessible by integration</code>.</p>
@@ -88,10 +92,11 @@ iwr -useb https://go.acyninnovation.com/install.ps1 | iex`} />
 goreleaser release --snapshot --clean
 # Inspect dist/ — should contain acyn-go_*_windows_amd64.zip etc.`} />
 
-      <h3>3 — Tag and push</h3>
-      <CodeBlock language="bash" code={`git tag -a v1.2.0 -m "ACYN-Go v1.2.0"
+      <h3>3 — Tag and push from the GitHub repo root</h3>
+      <CodeBlock language="bash" code={`cd <repo-root>
+git tag -a v1.2.0 -m "ACYN-Go v1.2.0"
 git push origin v1.2.0`} />
-      <p>That push triggers <code>.github/workflows/release.yml</code>, which runs GoReleaser with the <code>GITHUB_TOKEN</code> already scoped for releases.</p>
+      <p>That push triggers the root <code>.github/workflows/release.yml</code>, which runs GoReleaser inside <code>agent/</code> with the <code>GITHUB_TOKEN</code> already scoped for releases.</p>
 
       <h3>4 — Watch CI</h3>
       <p>Go to <code>https://github.com/&lt;your-user&gt;/&lt;your-repo&gt;/actions</code>. The job should finish in 2–4 minutes and produce a draft release with:</p>
@@ -168,7 +173,8 @@ TTL:   Auto`} />
 
       <h2>Files that govern the release &amp; deploy</h2>
       <ul>
-        <li><code>agent/.github/workflows/release.yml</code> — CI trigger on <code>v*</code> tags.</li>
+        <li><code>.github/workflows/release.yml</code> — CI trigger on <code>v*</code> tags for the full GitHub repo.</li>
+        <li><code>agent/.github/workflows/release.yml</code> — same release workflow for an optional agent-only repo.</li>
         <li><code>agent/.goreleaser.yaml</code> — build matrix and archive naming. Owner/name auto-detected from <code>git remote origin</code>, so forks just work.</li>
         <li><code>public/install.ps1</code> — Windows one-liner. Defaults to <code>acynmkigrow/acyn-go</code>; override with <code>$env:ACYN_REPO</code>.</li>
         <li><code>vercel.json</code> — Vercel build config; sets <code>NITRO_PRESET=vercel</code> only when building on Vercel.</li>
