@@ -269,29 +269,29 @@ function CredsDialog({
               />
             </label>
           </div>
-          <label className="block text-xs text-white/60">
+          <label className="block text-xs text-muted-foreground">
             Username
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm font-mono outline-none focus:border-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
             />
           </label>
-          <label className="block text-xs text-white/60">
+          <label className="block text-xs text-muted-foreground">
             Password
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm font-mono outline-none focus:border-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
             />
           </label>
-          <label className="block text-xs text-white/60">
+          <label className="block text-xs text-muted-foreground">
             Device family
             <select
               value={family}
               onChange={(e) => setFamily(e.target.value as Family)}
-              className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-2 py-2 text-sm outline-none focus:border-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-2 py-2 text-sm text-foreground outline-none focus:border-primary"
             >
               {families.map((f) => (
                 <option key={f} value={f}>
@@ -306,7 +306,7 @@ function CredsDialog({
           >
             {busy ? "Connecting…" : "Connect"}
           </button>
-          <p className="text-[10px] text-white/30 text-center">
+          <p className="text-center text-[10px] text-muted-foreground">
             Credentials stay on your machine. Never sent to ACYN servers.
           </p>
         </form>
