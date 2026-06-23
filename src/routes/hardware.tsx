@@ -14,19 +14,19 @@ export const Route = createFileRoute("/hardware")({
 
 function Hardware() {
   return (
-    <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
+    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-28">
       <FadeUp>
         <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">Supported Hardware</div>
-        <h1 className="font-display text-5xl md:text-6xl font-semibold tracking-tighter text-gradient leading-[1.05] max-w-3xl">
+        <h1 className="max-w-3xl font-display text-4xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl md:text-6xl">
           From legacy OLT racks to next-gen ONTs.
         </h1>
-        <p className="mt-6 text-lg text-white/60 max-w-2xl">
+        <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           ACYN-Go ships device-aware command templates for the most deployed fibre hardware on the
           planet. The agent waits for the right prompt, captures output, and surfaces vendor errors
           in plain English.
         </p>
       </FadeUp>
-      <div className="mt-20">
+      <div className="mt-12 md:mt-20">
         <HardwareGrid />
       </div>
     </div>
