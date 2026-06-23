@@ -157,16 +157,16 @@ async function planWithLovable(system: string, user: string, key: string): Promi
 
 export async function createConfigPlan(input: unknown) {
   const data = InputSchema.parse(input);
-    const geminiKey = readSecret("GEMINI_API_KEY");
-    const lovableKey = readSecret("LOVABLE_API_KEY");
+  const geminiKey = readSecret("GEMINI_API_KEY");
+  const lovableKey = readSecret("LOVABLE_API_KEY");
 
-    if (!geminiKey && !lovableKey) {
-      return { error: "No AI provider configured. Set GEMINI_API_KEY (primary) or LOVABLE_API_KEY (fallback)." } as const;
-    }
+  if (!geminiKey && !lovableKey) {
+    return { error: "No AI provider configured. Set GEMINI_API_KEY (primary) or LOVABLE_API_KEY (fallback)." } as const;
+  }
 
-    const system = buildPrompt(data.family as Family);
-    const user = buildUserPrompt(data);
-    const errors: string[] = [];
+  const system = buildPrompt(data.family as Family);
+  const user = buildUserPrompt(data);
+  const errors: string[] = [];
 
     if (geminiKey) {
       try {
