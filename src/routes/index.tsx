@@ -60,7 +60,7 @@ function Home() {
         }
         visual={
           <Float duration={8}>
-            <img src={chipImg} alt="Compiled binary chip" className="max-h-80 w-auto glow-cyan" loading="lazy" />
+            <img src={chipImg} alt="Compiled binary chip" className="max-h-72 w-auto object-contain sm:max-h-80" loading="lazy" />
           </Float>
         }
       />
@@ -81,14 +81,14 @@ function Home() {
           <Float duration={6}>
             <TerminalWindow title="ssh + telnet" variant="glow" className="w-[460px] max-w-full">
               <div className="space-y-1">
-                <div className="text-white/40"># two sessions, one agent</div>
+                <div className="text-muted-foreground"># two sessions, one agent</div>
                 <div><span className="text-primary">[ssh]</span> 10.0.0.1:22 → MA5800 OLT</div>
-                <div className="text-emerald-glow">  ✓ display version</div>
-                <div className="text-emerald-glow">  ✓ vlan 100</div>
+                <div className="text-accent">  ✓ display version</div>
+                <div className="text-accent">  ✓ vlan 100</div>
                 <div><span className="text-primary">[telnet]</span> 10.0.0.2:23 → HG8245H</div>
-                <div className="text-emerald-glow">  ✓ wlan ssid FamilyNet</div>
-                <div className="text-emerald-glow">  ✓ save</div>
-                <div className="text-white/50">■ 2 devices · 7 commands · 412ms</div>
+                <div className="text-accent">  ✓ wlan ssid FamilyNet</div>
+                <div className="text-accent">  ✓ save</div>
+                <div className="text-muted-foreground">■ 2 devices · 7 commands · 412ms</div>
               </div>
             </TerminalWindow>
           </Float>
