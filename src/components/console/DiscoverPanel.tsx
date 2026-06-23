@@ -207,14 +207,14 @@ function CredsDialog({
   const [busy, setBusy] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-zinc-950 border border-white/10 p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-md border border-border bg-card p-4 shadow-2xl sm:p-6">
+        <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/40">Connect to</div>
-            <div className="font-mono text-lg">{device ? device.ip : "manual"}</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Connect to</div>
+            <div className="truncate font-mono text-lg text-foreground">{device ? device.ip : "manual"}</div>
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -233,18 +233,18 @@ function CredsDialog({
           className="space-y-3"
         >
           {!device && (
-            <label className="block text-xs text-white/60">
+            <label className="block text-xs text-muted-foreground">
               IP
               <input
                 value={ip}
                 onChange={(e) => setIp(e.target.value)}
                 placeholder="192.168.1.1"
-                className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm font-mono outline-none focus:border-primary"
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
               />
             </label>
           )}
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-white/60">
+            <label className="text-xs text-muted-foreground">
               Protocol
               <select
                 value={protocol}
@@ -253,19 +253,19 @@ function CredsDialog({
                   setProtocol(p);
                   setPort(p === "ssh" ? 22 : 23);
                 }}
-                className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-2 py-1.5 text-sm outline-none focus:border-primary"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
               >
                 <option value="ssh">SSH</option>
                 <option value="telnet">Telnet</option>
               </select>
             </label>
-            <label className="text-xs text-white/60">
+            <label className="text-xs text-muted-foreground">
               Port
               <input
                 type="number"
                 value={port}
                 onChange={(e) => setPort(parseInt(e.target.value) || 22)}
-                className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-2 py-1.5 text-sm font-mono outline-none focus:border-primary"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground outline-none focus:border-primary"
               />
             </label>
           </div>
