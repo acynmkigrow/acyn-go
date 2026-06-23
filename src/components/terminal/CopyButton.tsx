@@ -17,12 +17,12 @@ export function CopyButton({ value, className }: { value: string; className?: st
         }
       }}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors",
+        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
         className,
       )}
       aria-label="Copy to clipboard"
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-emerald-glow" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "Copied" : "Copy"}
     </button>
   );
