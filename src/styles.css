@@ -72,7 +72,10 @@
   body {
     font-family: var(--font-display);
     font-feature-settings: "ss01", "cv11";
+    overflow-x: hidden;
   }
+  img, svg, video, canvas { max-width: 100%; }
+  pre, code { overflow-wrap: anywhere; }
   code, pre, kbd, samp { font-family: var(--font-mono); }
   ::selection { background: rgba(56, 139, 253, 0.4); color: #fff; }
 
