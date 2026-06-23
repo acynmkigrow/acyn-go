@@ -9,19 +9,14 @@ type Props = {
 };
 
 export function HardwareItem({ image, title, subtitle, href = "/guide", glow = "cyan" }: Props) {
-  const glowClass = glow === "cyan" ? "glow-cyan" : "glow-emerald";
   return (
-    <a href={href} className="group block text-center px-6 py-10">
-      <div className="relative h-56 flex items-end justify-center transition-transform duration-500 ease-out group-hover:-translate-y-3">
-        <img src={image} alt={title} className={`max-h-full w-auto ${glowClass}`} />
-        <span
-          aria-hidden
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-10 w-40 rounded-full bg-primary/0 group-hover:bg-primary/20 blur-2xl transition-all duration-500"
-        />
+    <a href={href} className="group block rounded-md border border-border bg-card px-5 py-8 text-center transition-colors hover:border-primary/60 hover:bg-muted/60 sm:px-6">
+      <div className="relative flex h-44 items-end justify-center sm:h-52">
+        <img src={image} alt={title} className="max-h-full w-auto object-contain transition-transform duration-300 group-hover:-translate-y-1" />
       </div>
-      <h3 className="mt-8 font-display text-xl font-semibold tracking-tight text-white">{title}</h3>
-      <p className="mt-2 text-sm text-white/55 max-w-xs mx-auto leading-relaxed">{subtitle}</p>
-      <span className="mt-4 inline-flex items-center gap-1.5 text-sm text-primary opacity-0 -translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+      <h3 className="mt-7 font-display text-lg font-semibold tracking-tight text-foreground sm:text-xl">{title}</h3>
+      <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
+      <span className="mt-4 inline-flex items-center gap-1.5 text-sm text-primary transition-colors group-hover:text-primary/90">
         View Config Specs <ArrowRight className="h-3.5 w-3.5" />
       </span>
     </a>
