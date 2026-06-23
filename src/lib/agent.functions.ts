@@ -155,9 +155,8 @@ async function planWithLovable(system: string, user: string, key: string): Promi
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
-export const planConfig = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => InputSchema.parse(data))
-  .handler(async ({ data }) => {
+export async function createConfigPlan(input: unknown) {
+  const data = InputSchema.parse(input);
     const geminiKey = readSecret("GEMINI_API_KEY");
     const lovableKey = readSecret("LOVABLE_API_KEY");
 
@@ -193,4 +192,8 @@ export const planConfig = createServerFn({ method: "POST" })
     }
 
     return { error: `Planner failed. ${errors.join(" | ")}` } as const;
-  });
+}
+
+export const planConfig = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => InputSchema.parse(data))
+  .handler(async ({ data }) => createConfigPlan(data));
