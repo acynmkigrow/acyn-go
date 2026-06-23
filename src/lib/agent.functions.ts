@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { buildPrompt, validateCommands, type Family } from "./huawei-prompts";
@@ -22,8 +23,23 @@ const InputSchema = z.object({
 
 type PlanInput = z.infer<typeof InputSchema>;
 
+type RuntimeEnv = Record<string, unknown>;
+type RuntimeRequest = Request & {
+  runtime?: { cloudflare?: { env?: RuntimeEnv } };
+};
+
+function getRuntimeEnv() {
+  try {
+    const request = getRequest() as RuntimeRequest;
+    return request.runtime?.cloudflare?.env;
+  } catch {
+    return (globalThis as typeof globalThis & { __env__?: RuntimeEnv }).__env__;
+  }
+}
+
 function readSecret(name: "GEMINI_API_KEY" | "LOVABLE_API_KEY") {
-  const value = process.env[name];
+  const runtimeValue = getRuntimeEnv()?.[name];
+  const value = process.env[name] ?? (typeof runtimeValue === "string" ? runtimeValue : undefined);
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
@@ -80,7 +96,7 @@ async function planWithGemini(system: string, user: string, apiKey: string): Pro
   let lastErr: unknown = null;
   for (const model of models) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
