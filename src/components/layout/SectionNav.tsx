@@ -26,20 +26,20 @@ export function SectionNav({ items }: { items: SectionItem[] }) {
   }, [items]);
 
   return (
-    <div className="sticky top-16 z-40 backdrop-blur-md bg-black/70 border-b border-white/5">
-      <div className="mx-auto max-w-7xl px-6 h-12 flex items-center gap-6 overflow-x-auto text-sm">
+    <div className="sticky top-[105px] z-40 border-b border-border bg-background/95 backdrop-blur sm:top-16">
+      <div className="mx-auto flex h-12 max-w-7xl items-center gap-5 overflow-x-auto px-4 text-sm sm:px-6 md:gap-6">
         {items.map((it) => (
           <a
             key={it.id}
             href={`#${it.id}`}
             className={cn(
-              "relative py-3 whitespace-nowrap transition-colors",
-              active === it.id ? "text-white font-medium" : "text-white/50 hover:text-white/80",
+              "relative whitespace-nowrap py-3 transition-colors",
+              active === it.id ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
             {it.label}
             {active === it.id && (
-              <span className="absolute left-0 right-0 -bottom-px h-px bg-primary shadow-[0_0_8px_var(--primary)]" />
+              <span className="absolute left-0 right-0 -bottom-px h-px bg-primary" />
             )}
           </a>
         ))}
