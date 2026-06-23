@@ -168,30 +168,30 @@ export async function createConfigPlan(input: unknown) {
   const user = buildUserPrompt(data);
   const errors: string[] = [];
 
-    if (geminiKey) {
-      try {
-        const plan = postProcess(await planWithGemini(system, user, geminiKey), data.intent, data.family);
-        return { plan, provider: "gemini" } as const;
-      } catch (err) {
-        console.error("Gemini planner failed", err);
-        errors.push(`Gemini: ${providerMessage(err)}`);
-      }
+  if (geminiKey) {
+    try {
+      const plan = postProcess(await planWithGemini(system, user, geminiKey), data.intent, data.family);
+      return { plan, provider: "gemini" } as const;
+    } catch (err) {
+      console.error("Gemini planner failed", err);
+      errors.push(`Gemini: ${providerMessage(err)}`);
     }
+  }
 
-    if (lovableKey) {
-      try {
-        const plan = postProcess(await planWithLovable(system, user, lovableKey), data.intent, data.family);
-        return { plan, provider: "lovable" } as const;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (/402/.test(msg)) return { error: "AI credits exhausted. Add credits in Lovable workspace settings." } as const;
-        if (/429/.test(msg)) return { error: "Rate limit hit. Wait a moment and try again." } as const;
-        console.error("Lovable planner failed", err);
-        errors.push(`Lovable: ${providerMessage(err)}`);
-      }
+  if (lovableKey) {
+    try {
+      const plan = postProcess(await planWithLovable(system, user, lovableKey), data.intent, data.family);
+      return { plan, provider: "lovable" } as const;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/402/.test(msg)) return { error: "AI credits exhausted. Add credits in Lovable workspace settings." } as const;
+      if (/429/.test(msg)) return { error: "Rate limit hit. Wait a moment and try again." } as const;
+      console.error("Lovable planner failed", err);
+      errors.push(`Lovable: ${providerMessage(err)}`);
     }
+  }
 
-    return { error: `Planner failed. ${errors.join(" | ")}` } as const;
+  return { error: `Planner failed. ${errors.join(" | ")}` } as const;
 }
 
 export const planConfig = createServerFn({ method: "POST" })
