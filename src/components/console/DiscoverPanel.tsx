@@ -85,13 +85,13 @@ export function DiscoverPanel({
   }, [autoScan]);
 
   return (
-    <div className="rounded-2xl bg-white/[0.02] p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs uppercase tracking-wider text-white/40">Devices on LAN</div>
+    <div className="rounded-md border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">Devices on LAN</div>
         <button
           onClick={scan}
           disabled={scanning}
-          className="text-xs inline-flex items-center gap-1.5 rounded-md bg-white/5 hover:bg-white/10 px-2.5 py-1 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 py-1 text-xs hover:bg-muted disabled:opacity-50"
         >
           {scanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
           {scanning ? "Scanning…" : devices ? "Rescan" : "Find devices"}
@@ -99,11 +99,11 @@ export function DiscoverPanel({
       </div>
 
       {scanning && !devices && (
-        <p className="text-xs text-white/40">Scanning your LAN for Huawei, MikroTik, and Cisco devices…</p>
+        <p className="text-xs text-muted-foreground">Scanning your LAN for Huawei, MikroTik, and Cisco devices…</p>
       )}
 
       {!scanning && !devices && (
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-muted-foreground">
           Click <span className="text-primary">Find devices</span> to scan your local network. ~8 seconds.
         </p>
       )}
@@ -114,14 +114,14 @@ export function DiscoverPanel({
             <li key={d.ip}>
               <button
                 onClick={() => setPicked(d)}
-                className="w-full text-left rounded-md border border-white/5 bg-black/30 hover:border-primary/40 hover:bg-white/[0.04] transition px-3 py-2"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-left transition hover:border-primary/50 hover:bg-muted/50"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-sm text-white/90">{d.ip}</span>
-                  <span className="text-[10px] text-white/40">{d.openPorts.join(" · ")}</span>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                  <span className="truncate font-mono text-sm text-foreground">{d.ip}</span>
+                  <span className="text-[10px] text-muted-foreground">{d.openPorts.join(" · ")}</span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 text-[11px]">
-                  <Wifi className="h-3 w-3 text-white/40" />
+                  <Wifi className="h-3 w-3 text-muted-foreground" />
                   <span className={vendorBadgeClass(d)}>{vendorLabel(d)}</span>
                 </div>
               </button>
@@ -132,7 +132,7 @@ export function DiscoverPanel({
 
       <button
         onClick={() => setManualOpen(true)}
-        className="mt-3 text-[11px] text-white/40 hover:text-primary underline-offset-2 hover:underline"
+        className="mt-3 text-[11px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
       >
         Connect manually by IP →
       </button>
