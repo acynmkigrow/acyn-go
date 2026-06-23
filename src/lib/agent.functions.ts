@@ -40,6 +40,9 @@ function getRuntimeEnv() {
 function readSecret(name: "GEMINI_API_KEY" | "LOVABLE_API_KEY") {
   const runtimeValue = getRuntimeEnv()?.[name];
   const value = process.env[name] ?? (typeof runtimeValue === "string" ? runtimeValue : undefined);
+  if (!value && typeof process.env[name] !== "string") {
+    console.warn(`${name} is not visible to the server runtime.`);
+  }
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
