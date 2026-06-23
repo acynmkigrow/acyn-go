@@ -177,8 +177,8 @@ function ConsolePage() {
   const intentSent = messages.some((m) => m.role === "user");
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
-      <div className="grid lg:grid-cols-[320px_1fr] gap-8">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="grid gap-5 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] lg:gap-8">
         <aside className="space-y-4">
           <PairingCard
             status={status}
@@ -196,12 +196,12 @@ function ConsolePage() {
           {paired && !device && (
             <DiscoverPanel onDiscover={discover} onConnect={connectDevice} autoScan />
           )}
-          <div className="rounded-2xl bg-white/[0.02] p-5">
-            <div className="text-xs uppercase tracking-wider text-white/40 mb-3">Device family</div>
+          <div className="rounded-md border border-border bg-card p-4 sm:p-5">
+            <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">Device family</div>
             <select
               value={family}
               onChange={(e) => setFamily(e.target.value as Family)}
-              className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-primary"
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
             >
               <option value="hg">Huawei HG ONT (HG8245/HG8546)</option>
               <option value="gpon">Huawei GPON ONT</option>
@@ -211,28 +211,28 @@ function ConsolePage() {
               <option value="mikrotik">MikroTik RouterOS (CCR/CRS/RB/hAP)</option>
               <option value="cisco">Cisco IOS / IOS-XE / NX-OS</option>
             </select>
-            <p className="mt-3 text-xs text-white/40">Auto-detected when paired.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Auto-detected when paired.</p>
           </div>
           <button
             onClick={clearChat}
-            className="w-full text-xs text-white/40 hover:text-white inline-flex items-center justify-center gap-1.5 py-2"
+            className="inline-flex w-full items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground hover:text-foreground"
           >
             <Trash2 className="h-3.5 w-3.5" /> Clear conversation
           </button>
           <button
             onClick={signOut}
-            className="w-full text-xs text-white/40 hover:text-white inline-flex items-center justify-center gap-1.5 py-2"
+            className="inline-flex w-full items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground hover:text-foreground"
           >
             <LogOut className="h-3.5 w-3.5" /> Sign out
           </button>
         </aside>
 
-        <section className="flex flex-col min-h-[70vh] rounded-2xl bg-white/[0.015] p-6">
-          <div className="flex-1 space-y-6 overflow-y-auto pr-2">
+        <section className="flex min-h-[70vh] min-w-0 flex-col rounded-md border border-border bg-card p-4 sm:p-6">
+          <div className="flex-1 space-y-6 overflow-y-auto pr-1 sm:pr-2">
             {messages.length === 0 && (
               <div className="space-y-5">
-                <div className="text-white/40 text-sm">
-                  <p className="font-display text-lg text-white/70 mb-2">Ready when you are.</p>
+                <div className="text-sm text-muted-foreground">
+                  <p className="mb-2 font-display text-lg text-foreground">Ready when you are.</p>
                   <p>Pick a recipe to start, or type plain English below.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -244,7 +244,7 @@ function ConsolePage() {
                         setFamily(r.family);
                         setInput(r.intent);
                       }}
-                      className="text-xs rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:border-primary/40 transition px-3 py-1.5 inline-flex items-center gap-1.5"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs transition hover:border-primary/50 hover:bg-muted"
                     >
                       <Sparkles className="h-3 w-3 text-primary/80" /> {r.label}
                     </button>
