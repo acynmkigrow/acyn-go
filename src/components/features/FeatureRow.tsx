@@ -20,7 +20,7 @@ export function FeatureRow({ eyebrow, title, body, visual, reverse, id }: Props)
           reverse && "md:[&>*:first-child]:order-2",
         )}
       >
-        <FadeUp>
+        <FadeUp className="min-w-0">
           <div className="max-w-xl">
             {eyebrow && (
               <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">{eyebrow}</div>
@@ -31,8 +31,8 @@ export function FeatureRow({ eyebrow, title, body, visual, reverse, id }: Props)
             <div className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{body}</div>
           </div>
         </FadeUp>
-        <FadeUp delay={0.1}>
-          <div className="flex justify-center">{visual}</div>
+        <FadeUp delay={0.1} className="min-w-0">
+          <div className="flex min-w-0 justify-center">{visual}</div>
         </FadeUp>
       </div>
     </section>
