@@ -255,7 +255,7 @@ function ConsolePage() {
             {messages.map((m) =>
               m.role === "user" ? (
                 <div key={m.id} className="flex justify-end">
-                  <div className="max-w-[80%] rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 text-sm">
+                  <div className="max-w-[92%] rounded-md bg-primary px-4 py-2.5 text-sm text-primary-foreground sm:max-w-[80%]">
                     {m.text}
                   </div>
                 </div>
@@ -271,7 +271,7 @@ function ConsolePage() {
                       onRun={(resolved) => run(m, resolved)}
                     />
                   ) : (
-                    <div className="text-white/70">{m.text}</div>
+                    <div className="text-muted-foreground">{m.text}</div>
                   )}
                 </div>
               ),
@@ -283,18 +283,18 @@ function ConsolePage() {
               e.preventDefault();
               void send();
             }}
-            className="mt-6 flex gap-2"
+            className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
           >
             <input
               autoFocus
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Describe what you want to configure…"
-              className="flex-1 rounded-md bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-primary"
+              className="min-w-0 rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
             <button
               disabled={busy || !input.trim()}
-              className="rounded-md bg-primary text-primary-foreground px-4 py-3 text-sm inline-flex items-center gap-2 hover:bg-primary/90 disabled:opacity-40"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
               {busy ? "Thinking…" : "Send"}
