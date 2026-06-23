@@ -74,7 +74,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "ACYN-Go — AI-Powered Fiber Network CLI Agent" },
       { name: "description", content: "Single Go binary that configures Huawei GPON, OLT, ONT and HG devices via SSH or Telnet, driven by plain-English instructions." },
       { name: "author", content: "ACYN Innovation" },
-      { name: "theme-color", content: "#0a0a0a" },
+      { name: "theme-color", content: "#0d1117" },
       { property: "og:site_name", content: "ACYN-Go" },
       { property: "og:title", content: "ACYN-Go — AI-Powered Fiber Network CLI Agent" },
       { property: "og:description", content: "Provision GPON, OLT, ONT and HG devices in seconds with a single Go binary." },
@@ -84,9 +84,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" },
     ],
   }),
   shellComponent: RootShell,
