@@ -16,12 +16,12 @@ export const Route = createFileRoute("/guide")({
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section id={id} className="py-16 scroll-mt-32">
+    <section id={id} className="scroll-mt-32 border-b border-border py-12 last:border-b-0 md:py-16">
       <FadeUp>
-        <h2 className="font-display text-3xl md:text-4xl font-semibold tracking-tight text-gradient mb-6">
+        <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
           {title}
         </h2>
-        <div className="space-y-6 text-white/70 leading-relaxed">{children}</div>
+        <div className="space-y-6 leading-relaxed text-muted-foreground">{children}</div>
       </FadeUp>
     </section>
   );
@@ -40,13 +40,13 @@ function Guide() {
           { id: "extend", label: "Extending" },
         ]}
       />
-      <div className="mx-auto max-w-4xl px-6 pt-12 pb-32">
+      <div className="mx-auto max-w-4xl px-4 pb-20 pt-10 sm:px-6 md:pb-28 md:pt-12">
         <FadeUp>
           <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">Guide · v1.0</div>
-          <h1 className="font-display text-5xl md:text-6xl font-semibold tracking-tighter text-gradient leading-[1.05]">
+          <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl md:text-6xl">
             Build, install &amp; operate ACYN-Go.
           </h1>
-          <p className="mt-6 text-lg text-white/60 max-w-2xl">
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             A complete walkthrough — from a clean Windows host to a production fibre network being
             provisioned by AI in under 15 minutes.
           </p>

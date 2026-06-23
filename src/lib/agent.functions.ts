@@ -22,8 +22,25 @@ const InputSchema = z.object({
 
 type PlanInput = z.infer<typeof InputSchema>;
 
+type RuntimeEnv = Record<string, unknown>;
+
+function getRuntimeEnv() {
+  return (globalThis as typeof globalThis & { __env__?: RuntimeEnv }).__env__;
+}
+
 function readSecret(name: "GEMINI_API_KEY" | "LOVABLE_API_KEY") {
-  const value = process.env[name];
+  const runtimeValue = getRuntimeEnv()?.[name];
+  const raw = process.env[name] ?? (typeof runtimeValue === "string" ? runtimeValue : undefined);
+  const value = raw
+    ?.trim()
+    .replace(/^export\s+/i, "")
+    .replace(new RegExp(`^${name}\\s*=\\s*`, "i"), "")
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^['\"]|['\"]$/g, "")
+    .trim();
+  if (!value && typeof process.env[name] !== "string") {
+    console.warn(`${name} is not visible to the server runtime.`);
+  }
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
@@ -80,7 +97,7 @@ async function planWithGemini(system: string, user: string, apiKey: string): Pro
   let lastErr: unknown = null;
   for (const model of models) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -136,42 +153,45 @@ async function planWithLovable(system: string, user: string, key: string): Promi
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
+export async function createConfigPlan(input: unknown) {
+  const data = InputSchema.parse(input);
+  const geminiKey = readSecret("GEMINI_API_KEY");
+  const lovableKey = readSecret("LOVABLE_API_KEY");
+
+  if (!geminiKey && !lovableKey) {
+    return { error: "No AI provider configured. Set GEMINI_API_KEY (primary) or LOVABLE_API_KEY (fallback)." } as const;
+  }
+
+  const system = buildPrompt(data.family as Family);
+  const user = buildUserPrompt(data);
+  const errors: string[] = [];
+
+  if (geminiKey) {
+    try {
+      const plan = postProcess(await planWithGemini(system, user, geminiKey), data.intent, data.family);
+      return { plan, provider: "gemini" } as const;
+    } catch (err) {
+      console.error("Gemini planner failed", err);
+      errors.push(`Gemini: ${providerMessage(err)}`);
+    }
+  }
+
+  if (lovableKey) {
+    try {
+      const plan = postProcess(await planWithLovable(system, user, lovableKey), data.intent, data.family);
+      return { plan, provider: "lovable" } as const;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/402/.test(msg)) return { error: "AI credits exhausted. Add credits in Lovable workspace settings." } as const;
+      if (/429/.test(msg)) return { error: "Rate limit hit. Wait a moment and try again." } as const;
+      console.error("Lovable planner failed", err);
+      errors.push(`Lovable: ${providerMessage(err)}`);
+    }
+  }
+
+  return { error: `Planner failed. ${errors.join(" | ")}` } as const;
+}
+
 export const planConfig = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => InputSchema.parse(data))
-  .handler(async ({ data }) => {
-    const geminiKey = readSecret("GEMINI_API_KEY");
-    const lovableKey = readSecret("LOVABLE_API_KEY");
-
-    if (!geminiKey && !lovableKey) {
-      return { error: "No AI provider configured. Set GEMINI_API_KEY (primary) or LOVABLE_API_KEY (fallback)." } as const;
-    }
-
-    const system = buildPrompt(data.family as Family);
-    const user = buildUserPrompt(data);
-    const errors: string[] = [];
-
-    if (geminiKey) {
-      try {
-        const plan = postProcess(await planWithGemini(system, user, geminiKey), data.intent, data.family);
-        return { plan, provider: "gemini" } as const;
-      } catch (err) {
-        console.error("Gemini planner failed", err);
-        errors.push(`Gemini: ${providerMessage(err)}`);
-      }
-    }
-
-    if (lovableKey) {
-      try {
-        const plan = postProcess(await planWithLovable(system, user, lovableKey), data.intent, data.family);
-        return { plan, provider: "lovable" } as const;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (/402/.test(msg)) return { error: "AI credits exhausted. Add credits in Lovable workspace settings." } as const;
-        if (/429/.test(msg)) return { error: "Rate limit hit. Wait a moment and try again." } as const;
-        console.error("Lovable planner failed", err);
-        errors.push(`Lovable: ${providerMessage(err)}`);
-      }
-    }
-
-    return { error: `Planner failed. ${errors.join(" | ")}` } as const;
-  });
+  .handler(async ({ data }) => createConfigPlan(data));

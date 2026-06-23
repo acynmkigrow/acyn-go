@@ -17,7 +17,7 @@ export function Wizard({
       title: "Install the agent on the Windows machine that reaches the device",
       done: installed,
       body: (
-        <code className="block mt-1 text-[11px] text-emerald-300 bg-black/40 rounded px-2 py-1">
+        <code className="mt-1 block overflow-x-auto rounded bg-background px-2 py-1 text-[11px] text-accent">
           iwr -useb https://go.acyninnovation.com/install.ps1 | iex
         </code>
       ),
@@ -28,12 +28,12 @@ export function Wizard({
       done: paired,
       body: (
         <>
-          <code className="block mt-1 text-[11px] text-emerald-300 bg-black/40 rounded px-2 py-1">
+          <code className="mt-1 block overflow-x-auto rounded bg-background px-2 py-1 text-[11px] text-accent">
             acyn-go serve
           </code>
-          <p className="mt-1 text-[11px] text-white/40">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             Your browser opens automatically and pairs in one click — no codes to type. Add{" "}
-            <code className="text-white/60">--cli</code> for the legacy interactive prompts.
+            <code className="text-foreground/80">--cli</code> for the legacy interactive prompts.
           </p>
         </>
       ),
@@ -43,7 +43,7 @@ export function Wizard({
       title: "Pick your device",
       done: paired,
       body: (
-        <p className="mt-1 text-[11px] text-white/40">
+        <p className="mt-1 text-[11px] text-muted-foreground">
           The console scans your LAN for Huawei, MikroTik, and Cisco devices. Click one, enter
           credentials, and you're connected.
         </p>
@@ -54,7 +54,7 @@ export function Wizard({
       title: "Tell the agent what you want",
       done: intentSent,
       body: (
-        <p className="mt-1 text-[11px] text-white/40">
+        <p className="mt-1 text-[11px] text-muted-foreground">
           Pick a recipe below or type plain English. Fill any{" "}
           <span className="text-amber-300">&lt;highlighted&gt;</span> fields, then Run.
         </p>
@@ -65,7 +65,7 @@ export function Wizard({
   const icons = [Terminal, Terminal, Link2, Wand2];
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+    <div className="rounded-md border border-border bg-card p-4">
       <div className="text-xs uppercase tracking-wider text-primary/80 mb-3">Getting started</div>
       <ol className="space-y-3">
         {steps.map((s, i) => {
@@ -76,13 +76,13 @@ export function Wizard({
                 {s.done ? (
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 ) : (
-                  <Circle className="h-4 w-4 text-white/30" />
+                  <Circle className="h-4 w-4 text-muted-foreground" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 text-sm text-white/80">
-                  <Icon className="h-3.5 w-3.5 text-white/40" />
-                  <span className={s.done ? "line-through text-white/40" : ""}>{s.title}</span>
+                <div className="flex min-w-0 items-center gap-1.5 text-sm text-foreground/90">
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className={s.done ? "text-muted-foreground line-through" : ""}>{s.title}</span>
                 </div>
                 {!s.done && s.body}
               </div>

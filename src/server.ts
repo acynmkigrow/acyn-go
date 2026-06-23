@@ -9,6 +9,10 @@ type ServerEntry = {
 
 type RuntimeEnv = Record<string, unknown>;
 
+declare global {
+  var __env__: RuntimeEnv | undefined;
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -22,6 +26,8 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 function hydrateProcessEnv(env: unknown) {
   if (!env || typeof env !== "object") return;
+
+  globalThis.__env__ = env as RuntimeEnv;
 
   for (const [key, value] of Object.entries(env as RuntimeEnv)) {
     if (typeof value !== "string" || value.length === 0) continue;

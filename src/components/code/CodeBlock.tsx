@@ -12,9 +12,9 @@ type Props = {
 
 export function CodeBlock({ code, language = "bash", filename, className }: Props) {
   return (
-    <div className={cn("rounded-xl overflow-hidden border border-white/10 bg-black/60 backdrop-blur-md", className)}>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-white/[0.02]">
-        <span className="text-[11px] uppercase tracking-widest text-white/40 font-mono">
+    <div className={cn("overflow-hidden rounded-md border border-border bg-card", className)}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-muted px-3 py-2 sm:px-4">
+        <span className="truncate font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
           {filename ?? language}
         </span>
         <CopyButton value={code} />

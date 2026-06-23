@@ -19,9 +19,9 @@ export const Route = createFileRoute("/release")({
 
 function ReleasePage() {
   return (
-    <article className="mx-auto max-w-3xl px-6 py-16 prose prose-invert prose-headings:font-display">
+    <article className="prose prose-invert mx-auto max-w-3xl px-4 py-12 prose-headings:font-display prose-headings:text-foreground prose-p:text-muted-foreground prose-li:text-muted-foreground sm:px-6 sm:py-16">
       <h1>Releasing & Deploying ACYN-Go</h1>
-      <p className="lead text-white/60">
+      <p className="lead text-muted-foreground">
         These steps work for <strong>any GitHub account or org</strong> — substitute <code>&lt;your-user&gt;/&lt;your-repo&gt;</code>
         wherever you see it. The agent ships as a single Go binary per OS, cut by GoReleaser on every <code>v*</code> tag.
         The web installer always pulls the latest release, so users get the new build the moment you mark it Latest on GitHub.

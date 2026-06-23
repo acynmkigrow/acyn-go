@@ -20,23 +20,23 @@ export function TerminalWindow({
   return (
     <div
       className={cn(
-        "relative rounded-xl overflow-hidden backdrop-blur-md bg-black/70 border border-white/10",
-        variant === "glow" && "glow-cyan",
+        "relative overflow-hidden rounded-md border border-border bg-card",
+        variant === "glow" && "border-border",
         className,
       )}
     >
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-white/[0.02]">
-        <div className="flex items-center gap-1.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-muted px-3 py-2.5 sm:px-4">
+        <div className="flex min-w-0 items-center gap-1.5">
           <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
           <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
           <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-          <span className="ml-3 text-[11px] uppercase tracking-widest text-white/40 font-mono">
+          <span className="ml-2 truncate text-[11px] uppercase tracking-widest text-muted-foreground font-mono sm:ml-3">
             {title}
           </span>
         </div>
         {copyValue && <CopyButton value={copyValue} />}
       </div>
-      <div className="p-5 font-mono text-[13px] leading-relaxed text-white/85 overflow-x-auto">
+      <div className="overflow-x-auto p-4 font-mono text-[12px] leading-relaxed text-foreground sm:p-5 sm:text-[13px]">
         {children}
       </div>
     </div>

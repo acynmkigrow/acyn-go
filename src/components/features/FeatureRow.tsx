@@ -13,26 +13,26 @@ type Props = {
 
 export function FeatureRow({ eyebrow, title, body, visual, reverse, id }: Props) {
   return (
-    <section id={id} className="py-24 md:py-36">
+    <section id={id} className="border-b border-border py-16 md:py-28">
       <div
         className={cn(
-          "mx-auto max-w-7xl px-6 grid gap-16 md:gap-24 items-center md:grid-cols-2",
+          "mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 md:grid-cols-2 md:gap-16 lg:gap-24",
           reverse && "md:[&>*:first-child]:order-2",
         )}
       >
-        <FadeUp>
+        <FadeUp className="min-w-0">
           <div className="max-w-xl">
             {eyebrow && (
               <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">{eyebrow}</div>
             )}
-            <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight text-gradient leading-[1.05]">
+            <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl">
               {title}
             </h2>
-            <div className="mt-6 text-lg text-white/60 leading-relaxed">{body}</div>
+            <div className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{body}</div>
           </div>
         </FadeUp>
-        <FadeUp delay={0.1}>
-          <div className="flex justify-center">{visual}</div>
+        <FadeUp delay={0.1} className="min-w-0">
+          <div className="flex min-w-0 justify-center">{visual}</div>
         </FadeUp>
       </div>
     </section>

@@ -73,13 +73,13 @@ Proceed? [y/N]: y
 
 function Install() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-24 md:py-32">
+    <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 md:py-28">
       <FadeUp>
         <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">Installer</div>
-        <h1 className="font-display text-5xl md:text-6xl font-semibold tracking-tighter text-gradient leading-[1.05]">
+        <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl md:text-6xl">
           One command. <br /> Then provision anything.
         </h1>
-        <p className="mt-6 text-lg text-white/60 max-w-2xl">
+        <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           Open PowerShell as Administrator and paste the command below. The installer detects your
           architecture, fetches the latest signed release from GitHub, adds <code className="text-primary">acyn-go</code> to your PATH,
           and opens the paired web console. Web GUI users use the project AI keys automatically.
@@ -88,10 +88,10 @@ function Install() {
 
       <FadeUp delay={0.1}>
         <div className="mt-10">
-          <TerminalWindow title="PowerShell" copyValue={ONE_LINER} variant="glow">
-            <div className="flex gap-2">
+          <TerminalWindow title="PowerShell" copyValue={ONE_LINER}>
+            <div className="flex min-w-0 gap-2">
               <span className="text-primary">PS&gt;</span>
-              <span>{ONE_LINER}</span>
+              <span className="break-all">{ONE_LINER}</span>
             </div>
           </TerminalWindow>
         </div>
@@ -100,7 +100,7 @@ function Install() {
       <FadeUp delay={0.2}>
         <div className="mt-16">
           <h2 className="font-display text-2xl font-semibold tracking-tight mb-6">What the installer does</h2>
-          <ul className="space-y-3 text-white/70">
+          <ul className="space-y-3 text-muted-foreground">
             {[
               "Detects your OS and CPU architecture (windows/amd64, linux/amd64, darwin/arm64).",
               "Downloads the latest signed release archive from github.com/acyninnovation/acyn-go.",
@@ -120,7 +120,7 @@ function Install() {
       <FadeUp delay={0.3}>
         <div className="mt-16">
           <h2 className="font-display text-2xl font-semibold tracking-tight mb-6">Manual install</h2>
-          <p className="text-white/60 mb-6">
+          <p className="mb-6 text-muted-foreground">
             Prefer to do it by hand, or running on an air-gapped jump host? Follow the steps below.
           </p>
           <CodeBlock code={MANUAL} language="powershell" filename="manual-install.ps1" />

@@ -66,6 +66,7 @@
   html, body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -73,6 +74,8 @@
     font-family: var(--font-display);
     font-feature-settings: "ss01", "cv11";
   }
+  img, svg, video, canvas { max-width: 100%; }
+  pre, code { overflow-wrap: anywhere; }
   code, pre, kbd, samp { font-family: var(--font-mono); }
   ::selection { background: rgba(56, 139, 253, 0.4); color: #fff; }
 
@@ -82,6 +85,29 @@
     background-color: #161b22;
     color: #e6edf3;
   }
+
+  select,
+  input,
+  textarea {
+    background-color: var(--color-card);
+    color: var(--color-foreground);
+    border-color: var(--color-border);
+  }
+}
+
+@utility gh-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+@utility gh-muted { color: var(--color-muted-foreground); }
+
+@utility gh-button {
+  border: 1px solid var(--color-border);
+  background-color: var(--color-secondary);
+  color: var(--color-secondary-foreground);
+  box-shadow: none;
 }
 
 /* Neutralized — kept as no-ops so existing classNames don't break */

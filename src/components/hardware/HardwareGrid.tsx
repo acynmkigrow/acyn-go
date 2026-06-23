@@ -27,7 +27,7 @@ const items = [
 
 export function HardwareGrid() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((it, i) => (
         <FadeUp key={it.title} delay={i * 0.1}>
           <HardwareItem {...it} />

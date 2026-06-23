@@ -55,12 +55,12 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md">
-        <h1 className="font-display text-3xl font-semibold mb-2">
+    <div className="flex min-h-[80vh] items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <div className="w-full max-w-md rounded-md border border-border bg-card p-5 sm:p-6">
+        <h1 className="mb-2 font-display text-3xl font-semibold text-foreground">
           {mode === "signin" ? "Sign in" : "Create account"}
         </h1>
-        <p className="text-white/50 text-sm mb-8">
+        <p className="mb-8 text-sm text-muted-foreground">
           {mode === "signin"
             ? "Pair the web console to your locally-running acyn-go agent."
             : "You'll get instant access to the console and audit log."}
@@ -72,7 +72,7 @@ function AuthPage() {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-primary"
+            className="w-full rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
           />
           <input
             type="password"
@@ -81,7 +81,7 @@ function AuthPage() {
             placeholder="Password (min 8 chars)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-primary"
+            className="w-full rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
           />
           <button
             type="submit"
@@ -94,12 +94,12 @@ function AuthPage() {
         <button
           type="button"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-          className="mt-6 text-sm text-white/50 hover:text-white"
+          className="mt-6 text-sm text-muted-foreground hover:text-foreground"
         >
           {mode === "signin" ? "Need an account? Sign up" : "Have an account? Sign in"}
         </button>
-        <div className="mt-8 text-xs text-white/30">
-          <Link to="/" className="hover:text-white/60">← Back to home</Link>
+        <div className="mt-8 text-xs text-muted-foreground">
+          <Link to="/" className="hover:text-foreground">← Back to home</Link>
         </div>
       </div>
     </div>

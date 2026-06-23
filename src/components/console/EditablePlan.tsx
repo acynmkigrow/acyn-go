@@ -76,9 +76,9 @@ export function EditablePlan({
   const canRun = !ran && !running && plan.commands.length > 0 && unresolved.length === 0;
 
   return (
-    <div className="rounded-xl border border-white/5 bg-black/40 overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/5">
-        <div className="text-white/80">{plan.description}</div>
+    <div className="overflow-hidden rounded-md border border-border bg-background">
+      <div className="border-b border-border px-3 py-3 sm:px-4">
+        <div className="text-foreground/90">{plan.description}</div>
         {plan.warning && (
           <div className="mt-1.5 text-xs text-amber-400/90 flex items-start gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -169,8 +169,8 @@ export function EditablePlan({
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/5 bg-white/[0.02]">
-        <div className="text-xs text-white/40">
+      <div className="grid gap-3 border-t border-border bg-muted/50 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-4">
+        <div className="text-xs text-muted-foreground">
           {plan.destructive && <span className="text-amber-400">destructive · </span>}
           {plan.requires_save ? "writes config" : "read-only"}
           {unresolved.length > 0 && (
@@ -183,7 +183,7 @@ export function EditablePlan({
           <button
             onClick={() => onRun(resolvedCommands)}
             disabled={!canRun}
-            className="rounded-md bg-emerald-500/90 text-black px-3 py-1.5 text-xs inline-flex items-center gap-1.5 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs text-accent-foreground hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
             title={canRun ? "Run resolved commands" : "Fill all placeholders first"}
           >
             <Play className="h-3 w-3" /> {running ? "Running…" : "Run on device"}

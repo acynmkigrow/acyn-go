@@ -26,17 +26,17 @@ function Contact() {
         ACYN-Go is built and maintained by ACYN Innovation. Reach the right team directly using one
         of the channels below.
       </p>
-      <div className="not-prose grid sm:grid-cols-2 gap-6">
+      <div className="not-prose grid gap-4 sm:grid-cols-2 sm:gap-6">
         {channels.map((c) => (
           <a
             key={c.email}
             href={`mailto:${c.email}`}
-            className="group block p-6 rounded-xl border border-white/10 hover:border-primary/40 hover:bg-white/5 transition-all"
+            className="group block rounded-md border border-border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-muted/50 sm:p-6"
           >
             <c.icon className="h-5 w-5 text-primary mb-3" />
-            <div className="font-display text-lg font-semibold text-white">{c.title}</div>
-            <div className="text-sm text-white/55 mt-1">{c.desc}</div>
-            <div className="text-sm text-primary mt-3 group-hover:underline">{c.email}</div>
+            <div className="font-display text-lg font-semibold text-foreground">{c.title}</div>
+            <div className="mt-1 text-sm text-muted-foreground">{c.desc}</div>
+            <div className="mt-3 break-all text-sm text-primary group-hover:underline">{c.email}</div>
           </a>
         ))}
       </div>
