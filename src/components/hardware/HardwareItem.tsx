@@ -8,7 +8,7 @@ type Props = {
   glow?: "cyan" | "emerald";
 };
 
-export function HardwareItem({ image, title, subtitle, href = "/guide", glow = "cyan" }: Props) {
+export function HardwareItem({ image, title, subtitle, href = "/guide" }: Props) {
   return (
     <a href={href} className="group block rounded-md border border-border bg-card px-5 py-8 text-center transition-colors hover:border-primary/60 hover:bg-muted/60 sm:px-6">
       <div className="relative flex h-44 items-end justify-center sm:h-52">
