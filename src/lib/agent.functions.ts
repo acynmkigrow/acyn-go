@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { buildPrompt, validateCommands, type Family } from "./huawei-prompts";
@@ -24,17 +23,9 @@ const InputSchema = z.object({
 type PlanInput = z.infer<typeof InputSchema>;
 
 type RuntimeEnv = Record<string, unknown>;
-type RuntimeRequest = Request & {
-  runtime?: { cloudflare?: { env?: RuntimeEnv } };
-};
 
 function getRuntimeEnv() {
-  try {
-    const request = getRequest() as RuntimeRequest;
-    return request.runtime?.cloudflare?.env;
-  } catch {
-    return (globalThis as typeof globalThis & { __env__?: RuntimeEnv }).__env__;
-  }
+  return (globalThis as typeof globalThis & { __env__?: RuntimeEnv }).__env__;
 }
 
 function readSecret(name: "GEMINI_API_KEY" | "LOVABLE_API_KEY") {
