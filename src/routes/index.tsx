@@ -95,15 +95,15 @@ function Home() {
         }
       />
 
-      <section id="protocols" className="py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-6">
+      <section id="protocols" className="border-b border-border py-16 md:py-28">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <FadeUp>
             <div className="max-w-2xl">
               <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">GPON · XPON · OLT</div>
-              <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight text-gradient leading-[1.05]">
+              <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl">
                 Built around the protocols you already run.
               </h2>
-              <p className="mt-6 text-lg text-white/55 leading-relaxed">
+              <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
                 Device-aware command templates for HG series, GPON ONTs, XPON ONUs, and MA5600/5800 OLT platforms.
                 The agent waits for the right prompt, captures output, and surfaces vendor errors with context.
               </p>
@@ -112,12 +112,12 @@ function Home() {
         </div>
       </section>
 
-      <section id="hardware" className="py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-6">
+      <section id="hardware" className="border-b border-border py-16 md:py-28">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <FadeUp>
             <div className="max-w-2xl mb-16">
               <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">Supported Hardware</div>
-              <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight text-gradient">
+              <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
                 One agent. Every fibre device on your bench.
               </h2>
             </div>
@@ -126,14 +126,14 @@ function Home() {
         </div>
       </section>
 
-      <section id="deploy" className="py-24 md:py-36">
-        <div className="mx-auto max-w-5xl px-6 text-center">
+      <section id="deploy" className="py-16 md:py-28">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
           <FadeUp>
             <div className="text-xs uppercase tracking-[0.2em] text-primary mb-4">Deploy</div>
-            <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tighter text-gradient leading-[1.05]">
+            <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl md:text-6xl">
               Deploys on Windows Server in one line.
             </h2>
-            <p className="mt-6 text-lg text-white/55 max-w-2xl mx-auto">
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               No installer wizard. No MSI. One PowerShell command pulls the latest signed release, sets up your PATH,
               and prompts for your AI key.
             </p>
