@@ -82,6 +82,29 @@
     background-color: #161b22;
     color: #e6edf3;
   }
+
+  select,
+  input,
+  textarea {
+    background-color: var(--color-card);
+    color: var(--color-foreground);
+    border-color: var(--color-border);
+  }
+}
+
+@utility gh-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+@utility gh-muted { color: var(--color-muted-foreground); }
+
+@utility gh-button {
+  border: 1px solid var(--color-border);
+  background-color: var(--color-secondary);
+  color: var(--color-secondary-foreground);
+  box-shadow: none;
 }
 
 /* Neutralized — kept as no-ops so existing classNames don't break */
