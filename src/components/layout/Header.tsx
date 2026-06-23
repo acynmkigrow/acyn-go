@@ -23,7 +23,7 @@ export function Header() {
             ACYN-Go
           </span>
         </Link>
-        <nav className="order-3 col-span-2 flex items-center gap-4 overflow-x-auto pb-1 text-sm text-muted-foreground md:order-none md:col-span-1 md:gap-6 md:overflow-visible md:pb-0">
+        <nav className="order-3 col-span-2 flex min-w-0 items-center gap-4 overflow-x-auto pb-1 text-sm text-muted-foreground md:order-none md:col-span-1 md:gap-6 md:overflow-visible md:pb-0">
           {links.map((l) => (
             <Link
               key={l.to}
