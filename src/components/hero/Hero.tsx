@@ -64,12 +64,12 @@ export function Hero() {
             <TerminalWindow title="acyn-go session">
               <div className="space-y-1.5">
                 <div><span className="text-primary">acyn-go&gt;</span> Set SSID FamilyNet WPA2 Home2025</div>
-                <div className="text-white/50">■ Plan: configure WLAN radio 0/0/0</div>
-                <div className="text-emerald-glow">  ✓ interface wlan-radio 0/0/0</div>
-                <div className="text-emerald-glow">  ✓ ssid FamilyNet</div>
-                <div className="text-emerald-glow">  ✓ wpa2-psk ascii Home2025</div>
-                <div className="text-emerald-glow">  ✓ save</div>
-                <div className="text-white/60">■ Done in 412ms</div>
+                <div className="text-muted-foreground">■ Plan: configure WLAN radio 0/0/0</div>
+                <div className="text-accent">  ✓ interface wlan-radio 0/0/0</div>
+                <div className="text-accent">  ✓ ssid FamilyNet</div>
+                <div className="text-accent">  ✓ wpa2-psk ascii Home2025</div>
+                <div className="text-accent">  ✓ save</div>
+                <div className="text-muted-foreground">■ Done in 412ms</div>
               </div>
             </TerminalWindow>
           </Float>
