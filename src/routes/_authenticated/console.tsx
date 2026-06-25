@@ -30,7 +30,30 @@ export const Route = createFileRoute("/_authenticated/console")({
 
 type ChatMsg =
   | { id: string; role: "user"; text: string }
-  | { id: string; role: "assistant"; text: string; plan?: Plan; output?: string; ran?: boolean; ok?: boolean };
+  | {
+      id: string;
+      role: "assistant";
+      text: string;
+      plan?: Plan;
+      output?: string;
+      verifyOutput?: string;
+      rollbackOutput?: string;
+      ran?: boolean;
+      ok?: boolean;
+      verifyRan?: boolean;
+      rollbackRan?: boolean;
+    };
+
+type RunPhase = "apply" | "verify" | "rollback";
+
+function phaseKey(id: string, phase: RunPhase) {
+  return phase === "apply" ? id : `${id}::${phase}`;
+}
+function splitPhaseId(rawId: string): { id: string; phase: RunPhase } {
+  if (rawId.endsWith("::verify")) return { id: rawId.slice(0, -8), phase: "verify" };
+  if (rawId.endsWith("::rollback")) return { id: rawId.slice(0, -10), phase: "rollback" };
+  return { id: rawId, phase: "apply" };
+}
 
 const STORAGE_KEY = "acyn-go.console.messages.v1";
 
