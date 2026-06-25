@@ -79,6 +79,7 @@ export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
   const exec = useCallback((id: string, commands: string[], save: boolean) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    if (commands.length === 0) return false;
     ws.send(JSON.stringify({ type: "exec", id, commands, save }));
     return true;
   }, []);
