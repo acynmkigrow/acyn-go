@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { Play, Pencil, Check, AlertTriangle } from "lucide-react";
+import { Play, Pencil, Check, AlertTriangle, Eye, Undo2 } from "lucide-react";
 import type { Plan } from "@/lib/agent.functions";
 
-// Matches <name>, <name-thing>, <NAME>, plus TBD / TODO / FILL_ME tokens.
 const PLACEHOLDER_RE = /<([a-zA-Z][\w-]*)>|\b(TBD|TODO|FILL_ME)\b/g;
 
 type Segment =
@@ -30,24 +29,35 @@ function resolve(cmd: string, values: Record<string, string>): string {
   });
 }
 
+export type RunPhase = "apply" | "verify" | "rollback";
+
 export function EditablePlan({
   plan,
   output,
+  verifyOutput,
+  rollbackOutput,
   ran,
   ok,
+  verifyRan,
+  rollbackRan,
   running,
+  runningPhase,
   onRun,
 }: {
   plan: Plan;
   output?: string;
+  verifyOutput?: string;
+  rollbackOutput?: string;
   ran?: boolean;
   ok?: boolean;
+  verifyRan?: boolean;
+  rollbackRan?: boolean;
   running: boolean;
-  onRun: (resolvedCommands: string[]) => void;
+  runningPhase?: RunPhase | null;
+  onRun: (phase: RunPhase, resolvedCommands: string[]) => void;
 }) {
   const tokenized = useMemo(() => plan.commands.map(tokenize), [plan.commands]);
 
-  // Aggregate unique placeholder names so editing <slot> once fills everywhere.
   const placeholderNames = useMemo(() => {
     const set = new Set<string>();
     tokenized.forEach((segs) => segs.forEach((s) => s.kind === "ph" && set.add(s.name)));
@@ -55,7 +65,6 @@ export function EditablePlan({
   }, [tokenized]);
 
   const [values, setValues] = useState<Record<string, string>>({});
-  // Per-line manual override mode (free-edit the whole command).
   const [overrides, setOverrides] = useState<Record<number, string>>({});
   const [editingLine, setEditingLine] = useState<number | null>(null);
 
@@ -67,6 +76,15 @@ export function EditablePlan({
     [plan.commands, values, overrides],
   );
 
+  const resolvedVerify = useMemo(
+    () => (plan.verify_commands ?? []).map((c) => resolve(c, values)),
+    [plan.verify_commands, values],
+  );
+  const resolvedRollback = useMemo(
+    () => (plan.rollback_commands ?? []).map((c) => resolve(c, values)),
+    [plan.rollback_commands, values],
+  );
+
   const unresolved = useMemo(
     () => resolvedCommands.filter((c) => /<([a-zA-Z][\w-]*)>|\b(TBD|TODO|FILL_ME)\b/.test(c)),
     [resolvedCommands],
@@ -74,6 +92,10 @@ export function EditablePlan({
 
   const hasPlaceholders = placeholderNames.length > 0;
   const canRun = !ran && !running && plan.commands.length > 0 && unresolved.length === 0;
+  const canVerify =
+    ran && ok && !running && resolvedVerify.length > 0 && !verifyRan;
+  const canRollback =
+    ran && !running && resolvedRollback.length > 0 && !rollbackRan;
 
   return (
     <div className="overflow-hidden rounded-md border border-border bg-background">
@@ -110,9 +132,7 @@ export function EditablePlan({
                     <input
                       autoFocus={isEditing}
                       value={overrides[i] ?? cmd}
-                      onChange={(e) =>
-                        setOverrides((p) => ({ ...p, [i]: e.target.value }))
-                      }
+                      onChange={(e) => setOverrides((p) => ({ ...p, [i]: e.target.value }))}
                       onBlur={() => setEditingLine(null)}
                       className="w-full bg-white/5 border border-primary/40 rounded px-2 py-1 text-emerald-200 outline-none focus:border-primary"
                     />
@@ -126,9 +146,7 @@ export function EditablePlan({
                             key={j}
                             name={s.name}
                             value={values[s.name] ?? ""}
-                            onChange={(v) =>
-                              setValues((p) => ({ ...p, [s.name]: v }))
-                            }
+                            onChange={(v) => setValues((p) => ({ ...p, [s.name]: v }))}
                           />
                         ),
                       )}
@@ -140,7 +158,6 @@ export function EditablePlan({
                     type="button"
                     onClick={() => {
                       if (isOver) {
-                        // Toggle back to placeholder mode
                         setOverrides((p) => {
                           const c = { ...p };
                           delete c[i];
@@ -179,28 +196,61 @@ export function EditablePlan({
             </span>
           )}
         </div>
-        {plan.commands.length > 0 && !ran && (
-          <button
-            onClick={() => onRun(resolvedCommands)}
-            disabled={!canRun}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs text-accent-foreground hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
-            title={canRun ? "Run resolved commands" : "Fill all placeholders first"}
-          >
-            <Play className="h-3 w-3" /> {running ? "Running…" : "Run on device"}
-          </button>
-        )}
-        {ran && (
-          <div className={`text-xs ${ok ? "text-emerald-400" : "text-red-400"}`}>
-            {ok ? "✓ done" : "✕ failed"}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2 justify-end">
+          {plan.commands.length > 0 && !ran && (
+            <button
+              onClick={() => onRun("apply", resolvedCommands)}
+              disabled={!canRun}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs text-accent-foreground hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+              title={canRun ? "Run resolved commands" : "Fill all placeholders first"}
+            >
+              <Play className="h-3 w-3" />
+              {running && runningPhase === "apply" ? "Running…" : "Run on device"}
+            </button>
+          )}
+          {ran && (
+            <span className={`text-xs ${ok ? "text-emerald-400" : "text-red-400"}`}>
+              {ok ? "✓ applied" : "✕ failed"}
+            </span>
+          )}
+          {canVerify && (
+            <button
+              onClick={() => onRun("verify", resolvedVerify)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted"
+            >
+              <Eye className="h-3 w-3" />
+              {running && runningPhase === "verify" ? "Verifying…" : "Verify"}
+            </button>
+          )}
+          {canRollback && (
+            <button
+              onClick={() => onRun("rollback", resolvedRollback)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-amber-500/40 px-3 py-1.5 text-xs text-amber-300 hover:bg-amber-500/10"
+              title="Undo the commands above"
+            >
+              <Undo2 className="h-3 w-3" />
+              {running && runningPhase === "rollback" ? "Rolling back…" : "Rollback"}
+            </button>
+          )}
+        </div>
       </div>
 
       {output && (
-        <pre className="px-4 py-3 text-[11px] font-mono text-white/60 whitespace-pre-wrap border-t border-white/5 max-h-64 overflow-y-auto">
-          {output}
-        </pre>
+        <PhaseOutput label="apply" text={output} />
       )}
+      {verifyOutput && <PhaseOutput label="verify" text={verifyOutput} />}
+      {rollbackOutput && <PhaseOutput label="rollback" text={rollbackOutput} />}
+    </div>
+  );
+}
+
+function PhaseOutput({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="border-t border-white/5">
+      <div className="px-4 pt-2 text-[10px] uppercase tracking-wider text-white/40">{label}</div>
+      <pre className="px-4 pb-3 pt-1 text-[11px] font-mono text-white/60 whitespace-pre-wrap max-h-64 overflow-y-auto">
+        {text}
+      </pre>
     </div>
   );
 }
@@ -215,7 +265,6 @@ function PlaceholderInput({
   onChange: (v: string) => void;
 }) {
   const filled = value.trim().length > 0;
-  // Sizing roughly tracks content length.
   const width = Math.max(name.length + 2, value.length + 2);
   return (
     <input
