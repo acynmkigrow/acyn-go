@@ -21,6 +21,7 @@ import { Route as LegalTermsRouteImport } from './routes/legal.terms'
 import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as LegalLicenseRouteImport } from './routes/legal.license'
 import { Route as LegalContactRouteImport } from './routes/legal.contact'
+import { Route as ApiDiagAiRouteImport } from './routes/api/diag-ai'
 import { Route as AuthenticatedConsoleRouteImport } from './routes/_authenticated/console'
 
 const ReleaseRoute = ReleaseRouteImport.update({
@@ -82,6 +83,11 @@ const LegalContactRoute = LegalContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => LegalRoute,
 } as any)
+const ApiDiagAiRoute = ApiDiagAiRouteImport.update({
+  id: '/api/diag-ai',
+  path: '/api/diag-ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedConsoleRoute = AuthenticatedConsoleRouteImport.update({
   id: '/console',
   path: '/console',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/legal': typeof LegalRouteWithChildren
   '/release': typeof ReleaseRoute
   '/console': typeof AuthenticatedConsoleRoute
+  '/api/diag-ai': typeof ApiDiagAiRoute
   '/legal/contact': typeof LegalContactRoute
   '/legal/license': typeof LegalLicenseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalRouteWithChildren
   '/release': typeof ReleaseRoute
   '/console': typeof AuthenticatedConsoleRoute
+  '/api/diag-ai': typeof ApiDiagAiRoute
   '/legal/contact': typeof LegalContactRoute
   '/legal/license': typeof LegalLicenseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/legal': typeof LegalRouteWithChildren
   '/release': typeof ReleaseRoute
   '/_authenticated/console': typeof AuthenticatedConsoleRoute
+  '/api/diag-ai': typeof ApiDiagAiRoute
   '/legal/contact': typeof LegalContactRoute
   '/legal/license': typeof LegalLicenseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/release'
     | '/console'
+    | '/api/diag-ai'
     | '/legal/contact'
     | '/legal/license'
     | '/legal/privacy'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/release'
     | '/console'
+    | '/api/diag-ai'
     | '/legal/contact'
     | '/legal/license'
     | '/legal/privacy'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/release'
     | '/_authenticated/console'
+    | '/api/diag-ai'
     | '/legal/contact'
     | '/legal/license'
     | '/legal/privacy'
@@ -187,6 +199,7 @@ export interface RootRouteChildren {
   InstallRoute: typeof InstallRoute
   LegalRoute: typeof LegalRouteWithChildren
   ReleaseRoute: typeof ReleaseRoute
+  ApiDiagAiRoute: typeof ApiDiagAiRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -275,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalContactRouteImport
       parentRoute: typeof LegalRoute
     }
+    '/api/diag-ai': {
+      id: '/api/diag-ai'
+      path: '/api/diag-ai'
+      fullPath: '/api/diag-ai'
+      preLoaderRoute: typeof ApiDiagAiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/console': {
       id: '/_authenticated/console'
       path: '/console'
@@ -321,6 +341,7 @@ const rootRouteChildren: RootRouteChildren = {
   InstallRoute: InstallRoute,
   LegalRoute: LegalRouteWithChildren,
   ReleaseRoute: ReleaseRoute,
+  ApiDiagAiRoute: ApiDiagAiRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
