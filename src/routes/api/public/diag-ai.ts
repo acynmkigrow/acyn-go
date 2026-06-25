@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createConfigPlan } from "@/lib/agent.functions";
 
-export const Route = createFileRoute("/api/diag-ai")({
+export const Route = createFileRoute("/api/public/diag-ai")({
   server: {
     handlers: {
       GET: async () => {
