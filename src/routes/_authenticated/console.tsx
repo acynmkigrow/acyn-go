@@ -325,10 +325,15 @@ function ConsolePage() {
                     <EditablePlan
                       plan={m.plan}
                       output={m.output}
+                      verifyOutput={m.verifyOutput}
+                      rollbackOutput={m.rollbackOutput}
                       ran={m.ran}
                       ok={m.ok}
+                      verifyRan={m.verifyRan}
+                      rollbackRan={m.rollbackRan}
                       running={pendingExecId === m.id}
-                      onRun={(resolved) => run(m, resolved)}
+                      runningPhase={pendingExecId === m.id ? pendingPhase : null}
+                      onRun={(phase, resolved) => run(m, phase, resolved)}
                     />
                   ) : (
                     <div className="text-muted-foreground">{m.text}</div>
