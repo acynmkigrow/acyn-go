@@ -30,7 +30,30 @@ export const Route = createFileRoute("/_authenticated/console")({
 
 type ChatMsg =
   | { id: string; role: "user"; text: string }
-  | { id: string; role: "assistant"; text: string; plan?: Plan; output?: string; ran?: boolean; ok?: boolean };
+  | {
+      id: string;
+      role: "assistant";
+      text: string;
+      plan?: Plan;
+      output?: string;
+      verifyOutput?: string;
+      rollbackOutput?: string;
+      ran?: boolean;
+      ok?: boolean;
+      verifyRan?: boolean;
+      rollbackRan?: boolean;
+    };
+
+type RunPhase = "apply" | "verify" | "rollback";
+
+function phaseKey(id: string, phase: RunPhase) {
+  return phase === "apply" ? id : `${id}::${phase}`;
+}
+function splitPhaseId(rawId: string): { id: string; phase: RunPhase } {
+  if (rawId.endsWith("::verify")) return { id: rawId.slice(0, -8), phase: "verify" };
+  if (rawId.endsWith("::rollback")) return { id: rawId.slice(0, -10), phase: "rollback" };
+  return { id: rawId, phase: "apply" };
+}
 
 const STORAGE_KEY = "acyn-go.console.messages.v1";
 
@@ -52,6 +75,7 @@ function ConsolePage() {
   const [busy, setBusy] = useState(false);
   const [family, setFamily] = useState<Family>("hg");
   const [pendingExecId, setPendingExecId] = useState<string | null>(null);
+  const [pendingPhase, setPendingPhase] = useState<RunPhase | null>(null);
   const outputBufRef = useRef<Map<string, string>>(new Map());
   const callPlanConfig = useServerFn(planConfig);
 
@@ -59,20 +83,35 @@ function ConsolePage() {
     if (m.type === "output") {
       const cur = outputBufRef.current.get(m.id) ?? "";
       outputBufRef.current.set(m.id, cur + m.line + "\n");
+      const { id, phase } = splitPhaseId(m.id);
+      const buf = outputBufRef.current.get(m.id);
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === m.id ? { ...msg, output: outputBufRef.current.get(m.id) } : msg)),
+        prev.map((msg) => {
+          if (msg.id !== id || msg.role !== "assistant") return msg;
+          if (phase === "verify") return { ...msg, verifyOutput: buf };
+          if (phase === "rollback") return { ...msg, rollbackOutput: buf };
+          return { ...msg, output: buf };
+        }),
       );
     } else if (m.type === "done") {
       const finalOutput = outputBufRef.current.get(m.id) ?? "";
+      const { id, phase } = splitPhaseId(m.id);
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === m.id ? { ...msg, ran: true, ok: m.ok, output: finalOutput } : msg)),
+        prev.map((msg) => {
+          if (msg.id !== id || msg.role !== "assistant") return msg;
+          if (phase === "verify")
+            return { ...msg, verifyRan: true, verifyOutput: finalOutput };
+          if (phase === "rollback")
+            return { ...msg, rollbackRan: true, rollbackOutput: finalOutput };
+          return { ...msg, ran: true, ok: m.ok, output: finalOutput };
+        }),
       );
       void (async () => {
         const { data: u } = await supabase.auth.getUser();
         if (!u.user) return;
         await supabase.from("command_runs").insert({
           user_id: u.user.id,
-          intent: "",
+          intent: phase,
           family,
           commands: [],
           output: finalOutput,
@@ -81,6 +120,7 @@ function ConsolePage() {
         });
       })();
       setPendingExecId(null);
+      setPendingPhase(null);
     }
   }, [family]);
 
@@ -112,16 +152,29 @@ function ConsolePage() {
     return Number.isFinite(n) ? n : undefined;
   }, [search.port]);
 
+  function recentHistory(): Array<{ role: "user" | "assistant"; text: string }> {
+    return messages.slice(-8).map((m) => ({
+      role: m.role,
+      text:
+        m.role === "assistant" && "plan" in m && m.plan
+          ? `${m.plan.description}${m.plan.commands.length ? `\n${m.plan.commands.join("; ")}` : ""}`
+          : m.text,
+    }));
+  }
+
   async function send(text?: string) {
     const value = (text ?? input).trim();
     if (!value || busy) return;
     const userId = crypto.randomUUID();
     const asstId = crypto.randomUUID();
+    const history = recentHistory();
     setMessages((prev) => [...prev, { id: userId, role: "user", text: value }]);
     setInput("");
     setBusy(true);
     try {
-      const res = await callPlanConfig({ data: { intent: value, family } });
+      const res = await callPlanConfig({
+        data: { intent: value, family, history, device_model: device?.model },
+      });
       if ("error" in res) {
         toast.error(res.error);
         setMessages((prev) => [
@@ -138,28 +191,35 @@ function ConsolePage() {
     }
   }
 
-  async function run(msg: ChatMsg, resolvedCommands: string[]) {
+  async function run(msg: ChatMsg, phase: RunPhase, resolvedCommands: string[]) {
     if (msg.role !== "assistant" || !msg.plan) return;
     if (status !== "connected") {
       toast.error("Pair the agent first.");
       return;
     }
-    outputBufRef.current.set(msg.id, "");
+    const key = phaseKey(msg.id, phase);
+    outputBufRef.current.set(key, "");
     setPendingExecId(msg.id);
-    const ok = exec(msg.id, resolvedCommands, msg.plan.requires_save);
+    setPendingPhase(phase);
+    const save = phase === "apply" ? msg.plan.requires_save : false;
+    const ok = exec(key, resolvedCommands, save);
     if (!ok) {
       toast.error("Socket not ready.");
       setPendingExecId(null);
+      setPendingPhase(null);
+      return;
     }
-    const { data: u } = await supabase.auth.getUser();
-    if (u.user) {
-      await supabase.from("command_runs").insert({
-        user_id: u.user.id,
-        intent: msg.text,
-        family,
-        commands: resolvedCommands,
-        ok: false,
-      });
+    if (phase === "apply") {
+      const { data: u } = await supabase.auth.getUser();
+      if (u.user) {
+        await supabase.from("command_runs").insert({
+          user_id: u.user.id,
+          intent: msg.text,
+          family,
+          commands: resolvedCommands,
+          ok: false,
+        });
+      }
     }
   }
 
@@ -265,10 +325,15 @@ function ConsolePage() {
                     <EditablePlan
                       plan={m.plan}
                       output={m.output}
+                      verifyOutput={m.verifyOutput}
+                      rollbackOutput={m.rollbackOutput}
                       ran={m.ran}
                       ok={m.ok}
+                      verifyRan={m.verifyRan}
+                      rollbackRan={m.rollbackRan}
                       running={pendingExecId === m.id}
-                      onRun={(resolved) => run(m, resolved)}
+                      runningPhase={pendingExecId === m.id ? pendingPhase : null}
+                      onRun={(phase, resolved) => run(m, phase, resolved)}
                     />
                   ) : (
                     <div className="text-muted-foreground">{m.text}</div>
