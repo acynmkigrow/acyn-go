@@ -32,6 +32,11 @@ type PlanInput = z.infer<typeof InputSchema>;
 
 type RuntimeEnv = Record<string, unknown>;
 
+const SUPABASE_AI_PLAN_URL = "https://mrthznysxanbwzyawzyd.supabase.co/functions/v1/ai-plan";
+const SUPABASE_URL = "https://mrthznysxanbwzyawzyd.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ydGh6bnlzeGFuYnd6eWF3enlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMzI2OTIsImV4cCI6MjA5NzcwODY5Mn0.c5IGWzCkdP9tIxzbPRqinYcDxNF5gcRi_L63wDWJ3j0";
+
 function getRuntimeEnv() {
   return (globalThis as typeof globalThis & { __env__?: RuntimeEnv }).__env__;
 }
@@ -169,6 +174,50 @@ async function planWithLovable(system: string, user: string, key: string): Promi
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
+async function planWithSupabaseSecrets(data: PlanInput): Promise<{ plan: Plan; provider: "supabase-secrets" }> {
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const authHeader = getRequest()?.headers.get("authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) {
+    throw new Error("No signed-in session was forwarded to the AI fallback.");
+  }
+
+  const resp = await fetch(SUPABASE_AI_PLAN_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-acyn-supabase-url": SUPABASE_URL,
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      authorization: authHeader,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const bodyText = await resp.text();
+  let body: unknown = null;
+  try {
+    body = bodyText ? JSON.parse(bodyText) : null;
+  } catch {
+    body = null;
+  }
+
+  const error =
+    body && typeof body === "object" && "error" in body && typeof body.error === "string"
+      ? body.error
+      : bodyText.slice(0, 300);
+
+  if (!resp.ok) {
+    throw new Error(`Supabase AI fallback ${resp.status}: ${error}`);
+  }
+  if (!body || typeof body !== "object" || !("plan" in body)) {
+    throw new Error("Supabase AI fallback returned no plan.");
+  }
+
+  return {
+    plan: postProcess(PlanSchema.parse(body.plan), data.intent, data.family),
+    provider: "supabase-secrets",
+  };
+}
+
 export async function createConfigPlan(input: unknown) {
   const data = InputSchema.parse(input);
   const geminiKey = readSecret("GEMINI_API_KEY");
@@ -176,10 +225,15 @@ export async function createConfigPlan(input: unknown) {
 
   if (!geminiKey && !lovableKey) {
     console.error("[planner] no provider keys found in process.env or runtime env");
-    return {
-      error:
-        "AI service is temporarily unavailable. The project's keys are not reaching the runtime — please retry in a moment.",
-    } as const;
+    try {
+      return await planWithSupabaseSecrets(data);
+    } catch (err) {
+      console.error("[planner] supabase-secret fallback failed:", err);
+      return {
+        error:
+          "AI service is temporarily unavailable. The deployed server cannot read Vercel env vars and the Supabase secret fallback did not respond. Please sign out/in and retry.",
+      } as const;
+    }
   }
 
   const system = buildPrompt(data.family as Family);
@@ -221,6 +275,13 @@ export async function createConfigPlan(input: unknown) {
         } as const;
       errors.push(`Lovable: ${providerMessage(err)}`);
     }
+  }
+
+  try {
+    return await planWithSupabaseSecrets(data);
+  } catch (err) {
+    console.error("[planner] supabase-secret fallback failed:", err);
+    errors.push(`Supabase secrets fallback: ${providerMessage(err)}`);
   }
 
   return {
