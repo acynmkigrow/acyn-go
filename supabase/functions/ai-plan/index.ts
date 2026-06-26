@@ -4,6 +4,9 @@ const corsHeaders = {
   "access-control-allow-methods": "POST, OPTIONS",
 };
 
+const SUPABASE_PUBLISHABLE_KEY_FALLBACK =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ydGh6bnlzeGFuYnd6eWF3enlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMzI2OTIsImV4cCI6MjA5NzcwODY5Mn0.c5IGWzCkdP9tIxzbPRqinYcDxNF5gcRi_L63wDWJ3j0";
+
 type Family = "hg" | "gpon" | "xpon" | "olt" | "switch" | "mikrotik" | "cisco";
 
 type Turn = { role: "user" | "assistant"; text: string };
@@ -273,7 +276,7 @@ async function verifySignedInUser(authHeader: string) {
   if (!authHeader.startsWith("Bearer ")) return false;
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://mrthznysxanbwzyawzyd.supabase.co";
   const supabaseKey =
-    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? reqPublishableKeyFallback;
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? SUPABASE_PUBLISHABLE_KEY_FALLBACK;
   const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: { apikey: supabaseKey, authorization: authHeader },
   });
