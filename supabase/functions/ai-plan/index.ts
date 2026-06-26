@@ -271,9 +271,9 @@ function providerMessage(err: unknown) {
 
 async function verifySignedInUser(authHeader: string) {
   if (!authHeader.startsWith("Bearer ")) return false;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
-  if (!supabaseUrl || !supabaseKey) throw new Error("Supabase auth env vars are missing.");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://mrthznysxanbwzyawzyd.supabase.co";
+  const supabaseKey =
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? reqPublishableKeyFallback;
   const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: { apikey: supabaseKey, authorization: authHeader },
   });

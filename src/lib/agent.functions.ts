@@ -33,6 +33,7 @@ type PlanInput = z.infer<typeof InputSchema>;
 type RuntimeEnv = Record<string, unknown>;
 
 const SUPABASE_AI_PLAN_URL = "https://mrthznysxanbwzyawzyd.supabase.co/functions/v1/ai-plan";
+const SUPABASE_URL = "https://mrthznysxanbwzyawzyd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ydGh6bnlzeGFuYnd6eWF3enlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMzI2OTIsImV4cCI6MjA5NzcwODY5Mn0.c5IGWzCkdP9tIxzbPRqinYcDxNF5gcRi_L63wDWJ3j0";
 
@@ -184,6 +185,7 @@ async function planWithSupabaseSecrets(data: PlanInput): Promise<{ plan: Plan; p
     method: "POST",
     headers: {
       "content-type": "application/json",
+      "x-acyn-supabase-url": SUPABASE_URL,
       apikey: SUPABASE_PUBLISHABLE_KEY,
       authorization: authHeader,
     },
