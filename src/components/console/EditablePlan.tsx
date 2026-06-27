@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Play, Pencil, Check, AlertTriangle, Eye, Undo2 } from "lucide-react";
+import { Play, Pencil, Check, AlertTriangle, Eye, Undo2, ShieldCheck } from "lucide-react";
 import type { Plan } from "@/lib/agent.functions";
 
 const PLACEHOLDER_RE = /<([a-zA-Z][\w-]*)>|\b(TBD|TODO|FILL_ME)\b/g;
@@ -31,6 +31,13 @@ function resolve(cmd: string, values: Record<string, string>): string {
 
 export type RunPhase = "apply" | "verify" | "rollback";
 
+export type SafeRunPayload = {
+  apply: string[];
+  verify: string[];
+  rollback: string[];
+  expect: string[];
+};
+
 export function EditablePlan({
   plan,
   output,
@@ -43,6 +50,7 @@ export function EditablePlan({
   running,
   runningPhase,
   onRun,
+  onSafeRun,
 }: {
   plan: Plan;
   output?: string;
@@ -55,6 +63,7 @@ export function EditablePlan({
   running: boolean;
   runningPhase?: RunPhase | null;
   onRun: (phase: RunPhase, resolvedCommands: string[]) => void;
+  onSafeRun?: (payload: SafeRunPayload) => void;
 }) {
   const tokenized = useMemo(() => plan.commands.map(tokenize), [plan.commands]);
 
@@ -96,6 +105,7 @@ export function EditablePlan({
     ran && ok && !running && resolvedVerify.length > 0 && !verifyRan;
   const canRollback =
     ran && !running && resolvedRollback.length > 0 && !rollbackRan;
+  const canSafe = canRun && onSafeRun !== undefined;
 
   return (
     <div className="overflow-hidden rounded-md border border-border bg-background">
@@ -197,6 +207,23 @@ export function EditablePlan({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 justify-end">
+          {canSafe && (
+            <button
+              onClick={() =>
+                onSafeRun?.({
+                  apply: resolvedCommands,
+                  verify: resolvedVerify,
+                  rollback: resolvedRollback,
+                  expect: plan.verify_expect ?? [],
+                })
+              }
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+              title="Apply, verify, and auto-rollback if verification fails"
+            >
+              <ShieldCheck className="h-3 w-3" />
+              Apply safely
+            </button>
+          )}
           {plan.commands.length > 0 && !ran && (
             <button
               onClick={() => onRun("apply", resolvedCommands)}
@@ -205,7 +232,7 @@ export function EditablePlan({
               title={canRun ? "Run resolved commands" : "Fill all placeholders first"}
             >
               <Play className="h-3 w-3" />
-              {running && runningPhase === "apply" ? "Running…" : "Run on device"}
+              {running && runningPhase === "apply" ? "Running…" : "Run only"}
             </button>
           )}
           {ran && (
