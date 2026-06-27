@@ -317,6 +317,25 @@ function ConsolePage() {
           {paired && !device && (
             <DiscoverPanel onDiscover={discover} onConnect={connectDevice} autoScan />
           )}
+          {device?.facts && Object.keys(device.facts).length > 0 && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <div className="mb-2 flex items-center gap-1.5 text-xs uppercase tracking-wider text-emerald-300/90">
+                Auto-detected
+              </div>
+              <ul className="space-y-1 text-[11px] text-muted-foreground">
+                {Object.entries(device.facts).slice(0, 6).map(([k, v]) => (
+                  <li key={k} className="truncate">
+                    <span className="text-foreground/80">{k}:</span>{" "}
+                    <span className="font-mono">{v.split("\n")[0].slice(0, 60)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                The AI uses these live values when planning, so it stops inventing ports / VLANs.
+              </p>
+            </div>
+          )}
+
           <div className="rounded-md border border-border bg-card p-4 sm:p-5">
             <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">Device family</div>
             <select
