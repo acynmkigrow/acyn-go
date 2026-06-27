@@ -77,7 +77,12 @@ function ConsolePage() {
   const [pendingExecId, setPendingExecId] = useState<string | null>(null);
   const [pendingPhase, setPendingPhase] = useState<RunPhase | null>(null);
   const outputBufRef = useRef<Map<string, string>>(new Map());
+  // Per-message orchestration state for "Apply safely" auto-chain.
+  const safeRunsRef = useRef<Map<string, { verify: string[]; rollback: string[]; expect: string[] }>>(new Map());
+  const execRef = useRef<((id: string, commands: string[], save: boolean) => boolean) | null>(null);
   const callPlanConfig = useServerFn(planConfig);
+
+
 
   const onSocketMsg = useCallback((m: ExecMessage) => {
     if (m.type === "output") {
@@ -121,10 +126,59 @@ function ConsolePage() {
       })();
       setPendingExecId(null);
       setPendingPhase(null);
+
+      // Apply safely auto-chain.
+      const safe = safeRunsRef.current.get(id);
+      if (safe) {
+        if (phase === "apply") {
+          if (m.ok && safe.verify.length > 0) {
+            // dispatch verify
+            const key = phaseKey(id, "verify");
+            outputBufRef.current.set(key, "");
+            setPendingExecId(id);
+            setPendingPhase("verify");
+            execRef.current?.(key, safe.verify, false);
+          } else {
+            safeRunsRef.current.delete(id);
+            if (!m.ok) toast.error("Apply failed — not running verify.");
+          }
+        } else if (phase === "verify") {
+          // Evaluate verify_expect regexes against verifyOutput.
+          const failures: string[] = [];
+          safe.verify.forEach((cmd, i) => {
+            const pat = safe.expect[i] ?? ".*";
+            try {
+              if (!new RegExp(pat, "i").test(finalOutput)) {
+                failures.push(`"${cmd}" expected /${pat}/`);
+              }
+            } catch {
+              /* invalid regex — skip */
+            }
+          });
+          if (failures.length > 0 && safe.rollback.length > 0) {
+            toast.error(`Verification failed — rolling back. ${failures[0]}`);
+            const key = phaseKey(id, "rollback");
+            outputBufRef.current.set(key, "");
+            setPendingExecId(id);
+            setPendingPhase("rollback");
+            execRef.current?.(key, safe.rollback, false);
+          } else {
+            if (failures.length === 0) toast.success("Verified ✓");
+            else toast.warning("Verification failed and no rollback available.");
+            safeRunsRef.current.delete(id);
+          }
+        } else if (phase === "rollback") {
+          safeRunsRef.current.delete(id);
+          toast.info("Rolled back.");
+        }
+      }
     }
   }, [family]);
 
+
   const { status, device, pair, exec, disconnect, discover, connectDevice } = useAgentSocket(onSocketMsg);
+  execRef.current = exec;
+
 
   // Sync family from connected device
   useEffect(() => {
@@ -173,8 +227,15 @@ function ConsolePage() {
     setBusy(true);
     try {
       const res = await callPlanConfig({
-        data: { intent: value, family, history, device_model: device?.model },
+        data: {
+          intent: value,
+          family,
+          history,
+          device_model: device?.model,
+          device_facts: device?.facts,
+        },
       });
+
       if ("error" in res) {
         toast.error(res.error);
         setMessages((prev) => [
@@ -256,6 +317,25 @@ function ConsolePage() {
           {paired && !device && (
             <DiscoverPanel onDiscover={discover} onConnect={connectDevice} autoScan />
           )}
+          {device?.facts && Object.keys(device.facts).length > 0 && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <div className="mb-2 flex items-center gap-1.5 text-xs uppercase tracking-wider text-emerald-300/90">
+                Auto-detected
+              </div>
+              <ul className="space-y-1 text-[11px] text-muted-foreground">
+                {Object.entries(device.facts).slice(0, 6).map(([k, v]) => (
+                  <li key={k} className="truncate">
+                    <span className="text-foreground/80">{k}:</span>{" "}
+                    <span className="font-mono">{v.split("\n")[0].slice(0, 60)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                The AI uses these live values when planning, so it stops inventing ports / VLANs.
+              </p>
+            </div>
+          )}
+
           <div className="rounded-md border border-border bg-card p-4 sm:p-5">
             <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">Device family</div>
             <select
@@ -334,6 +414,15 @@ function ConsolePage() {
                       running={pendingExecId === m.id}
                       runningPhase={pendingExecId === m.id ? pendingPhase : null}
                       onRun={(phase, resolved) => run(m, phase, resolved)}
+                      onSafeRun={(payload) => {
+                        safeRunsRef.current.set(m.id, {
+                          verify: payload.verify,
+                          rollback: payload.rollback,
+                          expect: payload.expect,
+                        });
+                        void run(m, "apply", payload.apply);
+                      }}
+
                     />
                   ) : (
                     <div className="text-muted-foreground">{m.text}</div>

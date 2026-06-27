@@ -3,9 +3,10 @@ import type { AgentInfo } from "./PairingCard";
 import type { Family } from "@/lib/huawei-prompts";
 
 export type ExecMessage =
-  | { type: "device"; vendor: string; model: string; family: AgentInfo["family"]; prompt: string }
+  | { type: "device"; vendor: string; model: string; family: AgentInfo["family"]; prompt: string; facts?: Record<string, string> }
   | { type: "output"; id: string; line: string; stream: "stdout" | "stderr" }
   | { type: "done"; id: string; ok: boolean; durationMs: number };
+
 
 export type SocketStatus = "idle" | "pairing" | "connected" | "error";
 
@@ -56,8 +57,9 @@ export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
         try {
           const msg = JSON.parse(e.data) as ExecMessage;
           if (msg.type === "device") {
-            setDevice({ vendor: msg.vendor, model: msg.model, family: msg.family, prompt: msg.prompt });
+            setDevice({ vendor: msg.vendor, model: msg.model, family: msg.family, prompt: msg.prompt, facts: msg.facts });
           }
+
           onMessageRef.current(msg);
         } catch {
           /* ignore */
