@@ -124,8 +124,55 @@ function ConsolePage() {
       })();
       setPendingExecId(null);
       setPendingPhase(null);
+
+      // Apply safely auto-chain.
+      const safe = safeRunsRef.current.get(id);
+      if (safe) {
+        if (phase === "apply") {
+          if (m.ok && safe.verify.length > 0) {
+            // dispatch verify
+            const key = phaseKey(id, "verify");
+            outputBufRef.current.set(key, "");
+            setPendingExecId(id);
+            setPendingPhase("verify");
+            exec(key, safe.verify, false);
+          } else {
+            safeRunsRef.current.delete(id);
+            if (!m.ok) toast.error("Apply failed — not running verify.");
+          }
+        } else if (phase === "verify") {
+          // Evaluate verify_expect regexes against verifyOutput.
+          const failures: string[] = [];
+          safe.verify.forEach((cmd, i) => {
+            const pat = safe.expect[i] ?? ".*";
+            try {
+              if (!new RegExp(pat, "i").test(finalOutput)) {
+                failures.push(`"${cmd}" expected /${pat}/`);
+              }
+            } catch {
+              /* invalid regex — skip */
+            }
+          });
+          if (failures.length > 0 && safe.rollback.length > 0) {
+            toast.error(`Verification failed — rolling back. ${failures[0]}`);
+            const key = phaseKey(id, "rollback");
+            outputBufRef.current.set(key, "");
+            setPendingExecId(id);
+            setPendingPhase("rollback");
+            exec(key, safe.rollback, false);
+          } else {
+            if (failures.length === 0) toast.success("Verified ✓");
+            else toast.warning("Verification failed and no rollback available.");
+            safeRunsRef.current.delete(id);
+          }
+        } else if (phase === "rollback") {
+          safeRunsRef.current.delete(id);
+          toast.info("Rolled back.");
+        }
+      }
     }
-  }, [family]);
+  }, [family, exec]);
+
 
   const { status, device, pair, exec, disconnect, discover, connectDevice } = useAgentSocket(onSocketMsg);
 
