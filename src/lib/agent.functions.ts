@@ -178,9 +178,10 @@ async function planWithLovable(system: string, user: string, key: string): Promi
 
 async function planWithSupabaseSecrets(data: PlanInput): Promise<{ plan: Plan; provider: "supabase-secrets" }> {
   const authHeader = getRequest()?.headers.get("authorization") ?? "";
-
+  if (!authHeader.startsWith("Bearer ")) {
     throw new Error("No signed-in session was forwarded to the AI fallback.");
   }
+
 
   const resp = await fetch(SUPABASE_AI_PLAN_URL, {
     method: "POST",
