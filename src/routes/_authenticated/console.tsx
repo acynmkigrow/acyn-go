@@ -77,7 +77,10 @@ function ConsolePage() {
   const [pendingExecId, setPendingExecId] = useState<string | null>(null);
   const [pendingPhase, setPendingPhase] = useState<RunPhase | null>(null);
   const outputBufRef = useRef<Map<string, string>>(new Map());
+  // Per-message orchestration state for "Apply safely" auto-chain.
+  const safeRunsRef = useRef<Map<string, { verify: string[]; rollback: string[]; expect: string[] }>>(new Map());
   const callPlanConfig = useServerFn(planConfig);
+
 
   const onSocketMsg = useCallback((m: ExecMessage) => {
     if (m.type === "output") {
