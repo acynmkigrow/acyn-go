@@ -3,13 +3,12 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { buildPrompt, validateCommands, type Family } from "./huawei-prompts";
 
-
-
 const PlanSchema = z.object({
   description: z.string(),
   warning: z.string().default(""),
   commands: z.array(z.string()).default([]),
   verify_commands: z.array(z.string()).default([]),
+  verify_expect: z.array(z.string()).default([]),
   rollback_commands: z.array(z.string()).default([]),
   requires_save: z.boolean().default(false),
   destructive: z.boolean().default(false),
@@ -22,10 +21,14 @@ const TurnSchema = z.object({
   text: z.string().max(2000),
 });
 
+const FactValueSchema = z.union([z.string(), z.array(z.string())]);
+const FactsSchema = z.record(z.string().max(64), FactValueSchema).optional();
+
 const InputSchema = z.object({
   intent: z.string().min(1).max(2000),
   family: z.enum(["hg", "gpon", "xpon", "olt", "switch", "mikrotik", "cisco"]),
   device_model: z.string().max(120).optional(),
+  device_facts: FactsSchema,
   recent_output: z.string().max(4000).optional(),
   history: z.array(TurnSchema).max(12).optional(),
 });
@@ -33,11 +36,6 @@ const InputSchema = z.object({
 type PlanInput = z.infer<typeof InputSchema>;
 
 type RuntimeEnv = Record<string, unknown>;
-
-const SUPABASE_AI_PLAN_URL = "https://mrthznysxanbwzyawzyd.supabase.co/functions/v1/ai-plan";
-const SUPABASE_URL = "https://mrthznysxanbwzyawzyd.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ydGh6bnlzeGFuYnd6eWF3enlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMzI2OTIsImV4cCI6MjA5NzcwODY5Mn0.c5IGWzCkdP9tIxzbPRqinYcDxNF5gcRi_L63wDWJ3j0";
 
 function getRuntimeEnv() {
   return (globalThis as typeof globalThis & { __env__?: RuntimeEnv }).__env__;
@@ -68,6 +66,16 @@ function providerMessage(err: unknown) {
   return msg.slice(0, 200);
 }
 
+function formatFacts(facts?: PlanInput["device_facts"]): string {
+  if (!facts) return "";
+  const lines: string[] = [];
+  for (const [k, v] of Object.entries(facts)) {
+    const val = Array.isArray(v) ? v.join(", ") : v;
+    if (val && val.length > 0) lines.push(`- ${k}: ${val.slice(0, 600)}`);
+  }
+  return lines.length ? `Live device facts (use these — do NOT invent):\n${lines.join("\n")}` : "";
+}
+
 function buildUserPrompt(data: PlanInput) {
   const history = (data.history ?? [])
     .slice(-8)
@@ -75,22 +83,28 @@ function buildUserPrompt(data: PlanInput) {
     .join("\n");
   return [
     `Device family: ${data.family}${data.device_model ? ` (${data.device_model})` : ""}`,
+    formatFacts(data.device_facts),
     history ? `Conversation so far:\n${history}` : "",
     data.recent_output ? `Recent device output:\n${data.recent_output.slice(-2000)}` : "",
     `Latest user request: ${data.intent}`,
-    `Return JSON with: description, warning, commands (apply), verify_commands (read-only checks like 'show'/'display'/'print' to confirm config), rollback_commands (commands that undo 'commands' when possible; empty array if not safely reversible), requires_save, destructive.`,
+    `Return JSON with: description, warning, commands (apply), verify_commands (read-only show/display/print that prove the change took effect), verify_expect (one regex per verify command that MUST match its output to consider apply successful — use ".*" only when no meaningful check exists), rollback_commands (commands that undo 'commands' when possible; empty array if not safely reversible), requires_save, destructive.`,
+    `Hard requirements:`,
+    `- If commands is non-empty, verify_commands and verify_expect MUST be non-empty and the same length.`,
+    `- Use real interface names / VLAN ids / slot-port values from "Live device facts" above. If a required value is missing from facts and not supplied by the user, return commands: [] and explain in warning.`,
   ]
     .filter(Boolean)
     .join("\n\n");
 }
 
-function postProcess(plan: Plan, intent: string, family: string) {
+function postProcess(plan: Plan, intent: string, family: string): Plan {
   const check = validateCommands([...plan.commands, ...plan.rollback_commands], intent);
   if (!check.ok) {
     return {
       ...plan,
       commands: [],
       rollback_commands: [],
+      verify_commands: [],
+      verify_expect: [],
       warning: `${plan.warning ? plan.warning + " " : ""}Blocked by safety validator: ${check.reason}`,
       destructive: true,
     };
@@ -99,6 +113,21 @@ function postProcess(plan: Plan, intent: string, family: string) {
   if (plan.requires_save && plan.commands.length > 0 && huaweiSave) {
     const last = plan.commands[plan.commands.length - 1].trim().toLowerCase();
     if (last !== "save" && last !== "save y") plan.commands.push("save");
+  }
+  // Enforce verify_commands when commands present.
+  if (plan.commands.length > 0 && plan.verify_commands.length === 0) {
+    const fallback =
+      family === "mikrotik"
+        ? "/export compact"
+        : family === "cisco"
+        ? "show running-config | include !"
+        : "display current-configuration";
+    plan.verify_commands = [fallback];
+    plan.verify_expect = [".*"];
+  }
+  // Pad/truncate verify_expect to match verify_commands length.
+  if (plan.verify_commands.length !== plan.verify_expect.length) {
+    plan.verify_expect = plan.verify_commands.map((_, i) => plan.verify_expect[i] ?? ".*");
   }
   return plan;
 }
@@ -112,6 +141,7 @@ async function planWithGemini(system: string, user: string, apiKey: string): Pro
       warning: { type: "STRING" },
       commands: { type: "ARRAY", items: { type: "STRING" } },
       verify_commands: { type: "ARRAY", items: { type: "STRING" } },
+      verify_expect: { type: "ARRAY", items: { type: "STRING" } },
       rollback_commands: { type: "ARRAY", items: { type: "STRING" } },
       requires_save: { type: "BOOLEAN" },
       destructive: { type: "BOOLEAN" },
@@ -180,7 +210,6 @@ async function planWithSupabaseSecrets(data: PlanInput): Promise<{ plan: Plan; p
   const { planWithSupabaseSecrets: impl } = await import("./agent-supabase-fallback.server");
   return impl(data) as Promise<{ plan: Plan; provider: "supabase-secrets" }>;
 }
-
 
 export async function createConfigPlan(input: unknown) {
   const data = InputSchema.parse(input);

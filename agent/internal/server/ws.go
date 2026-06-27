@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/acyninnovation/acyn-go/internal/agent"
 	"github.com/acyninnovation/acyn-go/internal/devices"
 	"github.com/acyninnovation/acyn-go/internal/discover"
 	"github.com/acyninnovation/acyn-go/internal/transport"
@@ -24,11 +25,13 @@ import (
 )
 
 type DeviceInfo struct {
-	Vendor string `json:"vendor"`
-	Model  string `json:"model"`
-	Family string `json:"family"`
-	Prompt string `json:"prompt"`
+	Vendor string            `json:"vendor"`
+	Model  string            `json:"model"`
+	Family string            `json:"family"`
+	Prompt string            `json:"prompt"`
+	Facts  map[string]string `json:"facts,omitempty"`
 }
+
 
 type Server struct {
 	mu       sync.RWMutex
@@ -293,10 +296,12 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		Model:  req.Family,
 		Family: req.Family,
 		Prompt: firstPromptStr(prof.Prompts),
+		Facts:  agent.Fingerprint(conn, req.Family),
 	}
 	s.swapDevice(conn, dev)
 	writeJSONResp(w, http.StatusOK, connectResp{OK: true, Device: dev})
 }
+
 
 func firstPromptStr(p []string) string {
 	if len(p) == 0 {
@@ -328,11 +333,13 @@ type outMsg struct {
 	OK     bool   `json:"ok,omitempty"`
 	DurMs  int64  `json:"durationMs,omitempty"`
 
-	Vendor string `json:"vendor,omitempty"`
-	Model  string `json:"model,omitempty"`
-	Family string `json:"family,omitempty"`
-	Prompt string `json:"prompt,omitempty"`
+	Vendor string            `json:"vendor,omitempty"`
+	Model  string            `json:"model,omitempty"`
+	Family string            `json:"family,omitempty"`
+	Prompt string            `json:"prompt,omitempty"`
+	Facts  map[string]string `json:"facts,omitempty"`
 }
+
 
 func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("token") != s.token {
