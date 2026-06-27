@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { buildPrompt, validateCommands, type Family } from "./huawei-prompts";
+
 
 const PlanSchema = z.object({
   description: z.string(),
