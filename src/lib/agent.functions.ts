@@ -177,48 +177,10 @@ async function planWithLovable(system: string, user: string, key: string): Promi
 }
 
 async function planWithSupabaseSecrets(data: PlanInput): Promise<{ plan: Plan; provider: "supabase-secrets" }> {
-  const authHeader = getRequest()?.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) {
-    throw new Error("No signed-in session was forwarded to the AI fallback.");
-  }
-
-
-  const resp = await fetch(SUPABASE_AI_PLAN_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-acyn-supabase-url": SUPABASE_URL,
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      authorization: authHeader,
-    },
-    body: JSON.stringify(data),
-  });
-
-  const bodyText = await resp.text();
-  let body: unknown = null;
-  try {
-    body = bodyText ? JSON.parse(bodyText) : null;
-  } catch {
-    body = null;
-  }
-
-  const error =
-    body && typeof body === "object" && "error" in body && typeof body.error === "string"
-      ? body.error
-      : bodyText.slice(0, 300);
-
-  if (!resp.ok) {
-    throw new Error(`Supabase AI fallback ${resp.status}: ${error}`);
-  }
-  if (!body || typeof body !== "object" || !("plan" in body)) {
-    throw new Error("Supabase AI fallback returned no plan.");
-  }
-
-  return {
-    plan: postProcess(PlanSchema.parse(body.plan), data.intent, data.family),
-    provider: "supabase-secrets",
-  };
+  const { planWithSupabaseSecrets: impl } = await import("./agent-supabase-fallback.server");
+  return impl(data) as Promise<{ plan: Plan; provider: "supabase-secrets" }>;
 }
+
 
 export async function createConfigPlan(input: unknown) {
   const data = InputSchema.parse(input);
