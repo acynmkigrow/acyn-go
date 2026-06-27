@@ -79,7 +79,9 @@ function ConsolePage() {
   const outputBufRef = useRef<Map<string, string>>(new Map());
   // Per-message orchestration state for "Apply safely" auto-chain.
   const safeRunsRef = useRef<Map<string, { verify: string[]; rollback: string[]; expect: string[] }>>(new Map());
+  const execRef = useRef<((id: string, commands: string[], save: boolean) => boolean) | null>(null);
   const callPlanConfig = useServerFn(planConfig);
+
 
 
   const onSocketMsg = useCallback((m: ExecMessage) => {
