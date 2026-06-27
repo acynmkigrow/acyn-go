@@ -395,6 +395,15 @@ function ConsolePage() {
                       running={pendingExecId === m.id}
                       runningPhase={pendingExecId === m.id ? pendingPhase : null}
                       onRun={(phase, resolved) => run(m, phase, resolved)}
+                      onSafeRun={(payload) => {
+                        safeRunsRef.current.set(m.id, {
+                          verify: payload.verify,
+                          rollback: payload.rollback,
+                          expect: payload.expect,
+                        });
+                        void run(m, "apply", payload.apply);
+                      }}
+
                     />
                   ) : (
                     <div className="text-muted-foreground">{m.text}</div>
