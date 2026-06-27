@@ -227,8 +227,15 @@ function ConsolePage() {
     setBusy(true);
     try {
       const res = await callPlanConfig({
-        data: { intent: value, family, history, device_model: device?.model },
+        data: {
+          intent: value,
+          family,
+          history,
+          device_model: device?.model,
+          device_facts: device?.facts,
+        },
       });
+
       if ("error" in res) {
         toast.error(res.error);
         setMessages((prev) => [
