@@ -6,7 +6,9 @@ export type AgentInfo = {
   model: string;
   family: Family;
   prompt: string;
+  facts?: Record<string, string>;
 };
+
 
 export function PairingCard({
   status,
