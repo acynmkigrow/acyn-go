@@ -363,11 +363,13 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 			Model:  dev.Model,
 			Family: dev.Family,
 			Prompt: dev.Prompt,
+			Facts:  dev.Facts,
 		}
 		if buf, err := json.Marshal(hello); err == nil {
 			_ = c.Write(ctx, websocket.MessageText, buf)
 		}
 	}
+
 
 	// Watch for device swaps and re-hello.
 	lastFamily := dev.Family
@@ -385,11 +387,12 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 				d := s.currentDevice()
 				if d.Family != lastFamily && d.Family != "" {
 					lastFamily = d.Family
-					hello := outMsg{Type: "device", Vendor: d.Vendor, Model: d.Model, Family: d.Family, Prompt: d.Prompt}
+					hello := outMsg{Type: "device", Vendor: d.Vendor, Model: d.Model, Family: d.Family, Prompt: d.Prompt, Facts: d.Facts}
 					if buf, err := json.Marshal(hello); err == nil {
 						_ = c.Write(ctx, websocket.MessageText, buf)
 					}
 				}
+
 			}
 		}
 	}()
