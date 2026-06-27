@@ -137,7 +137,7 @@ function ConsolePage() {
             outputBufRef.current.set(key, "");
             setPendingExecId(id);
             setPendingPhase("verify");
-            exec(key, safe.verify, false);
+            execRef.current?.(key, safe.verify, false);
           } else {
             safeRunsRef.current.delete(id);
             if (!m.ok) toast.error("Apply failed — not running verify.");
@@ -161,7 +161,7 @@ function ConsolePage() {
             outputBufRef.current.set(key, "");
             setPendingExecId(id);
             setPendingPhase("rollback");
-            exec(key, safe.rollback, false);
+            execRef.current?.(key, safe.rollback, false);
           } else {
             if (failures.length === 0) toast.success("Verified ✓");
             else toast.warning("Verification failed and no rollback available.");
@@ -173,10 +173,12 @@ function ConsolePage() {
         }
       }
     }
-  }, [family, exec]);
+  }, [family]);
 
 
   const { status, device, pair, exec, disconnect, discover, connectDevice } = useAgentSocket(onSocketMsg);
+  execRef.current = exec;
+
 
   // Sync family from connected device
   useEffect(() => {
