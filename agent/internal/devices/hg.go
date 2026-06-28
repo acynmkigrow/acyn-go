@@ -4,6 +4,9 @@ func init() {
 	Register("hg", Profile{
 		Prompts: []string{">", "#", "WAP>"},
 		SaveCmd: "save",
+		LoginPrelude: []string{
+			"screen-length 0 temporary",
+		},
 		Hints: `Target: Huawei HG-series home gateway (HG8245H, HG8546M, etc.).
 - Enter privileged mode with 'enable' if needed.
 - WLAN config lives under 'interface wlan-radio 0/0/0'.

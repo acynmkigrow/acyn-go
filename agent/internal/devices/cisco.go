@@ -5,6 +5,10 @@ func init() {
 		// Cisco IOS / IOS-XE / NX-OS prompts: "Router>", "Router#", "Router(config)#", etc.
 		Prompts: []string{"(config)#", "(config-if)#", "(config-vlan)#", "#", ">"},
 		SaveCmd: "write memory",
+		LoginPrelude: []string{
+			"terminal length 0",
+			"terminal width 200",
+		},
 		Hints: `Target: Cisco IOS / IOS-XE switch or router (Catalyst, ISR, ASR). NX-OS shares most of this syntax — confirm via 'show version' if unsure.
 - Mode ladder: user EXEC '>' -> enable -> privileged '#' -> configure terminal -> '(config)#' -> end (back to '#').
 - VLAN: vlan <id> / name <n> / exit

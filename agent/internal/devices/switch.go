@@ -4,6 +4,9 @@ func init() {
 	switchProfile := Profile{
 		Prompts: []string{">", "]", "#"},
 		SaveCmd: "save",
+		LoginPrelude: []string{
+			"screen-length 0 temporary",
+		},
 		Hints: `Target: Huawei S-series switch (S5700/S6700/S5731).
 - Enter: system-view
 - Create VLANs in a batch: vlan batch 10 20 30
