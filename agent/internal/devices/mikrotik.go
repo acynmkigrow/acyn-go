@@ -3,10 +3,16 @@ package devices
 func init() {
 	Register("mikrotik", Profile{
 		// RouterOS shell prompts: "[admin@MikroTik] > " or "<name>] > "
-		Prompts: []string{"] > ", "] >", "> "},
+		Prompts: []string{"] > ", "] >"},
 		SaveCmd: "", // RouterOS auto-persists; no explicit save command
+		LoginPrelude: []string{
+			// Disable paging, widen the screen, and turn off colour so ANSI
+			// escapes don't poison our prompt detector.
+			"/console screen-number-of-lines rows=100",
+			"/console screen-number-of-columns columns=200",
+		},
 		Hints: `Target: MikroTik RouterOS (v6/v7) — CCR, CRS (in RouterOS mode), RB, hAP, cAP, wAP, Chateau.
-- One statement per line. Use ';' to chain multiple on one line. NO 'enable', NO 'config', NO 'save' — RouterOS auto-persists.
+- One statement per line. NEVER chain with ';' — the agent runs one command at a time and waits for the prompt. NO 'enable', NO 'config', NO 'save' — RouterOS auto-persists.
 - Hierarchical paths start with '/': '/system identity set name=...', '/ip address add ...'.
 - Prefer v7 syntax (rewritten /routing engine, native wireguard). For v6 fallback the user must say so.
 - Hardening: '/ip service set ssh port=<n>'; '/ip service set telnet,ftp,www,api,api-ssl disabled=yes'; '/user add name=<u> group=full password="<pw>"'; '/ip ssh set strong-crypto=yes host-key-type=ed25519 allow-none-crypto=no'.

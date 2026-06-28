@@ -4,6 +4,9 @@ func init() {
 	Register("olt", Profile{
 		Prompts: []string{">", "#", ")#"},
 		SaveCmd: "save",
+		LoginPrelude: []string{
+			"screen-length 0 temporary",
+		},
 		Hints: `Target: Huawei MA5600/MA5800-series OLT.
 - 'enable' then 'config' to reach configuration mode.
 - VLAN creation: 'vlan <id> smart'.

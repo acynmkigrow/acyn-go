@@ -13,6 +13,10 @@ type Profile struct {
 	Hints string
 	// SaveCmd is the command used to persist configuration.
 	SaveCmd string
+	// LoginPrelude are silent, idempotent commands run once after the initial
+	// prompt is detected. Use them to disable paging, ANSI colour, and line
+	// wrapping so the parser sees clean output. Failures are non-fatal.
+	LoginPrelude []string
 }
 
 var (

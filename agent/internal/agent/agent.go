@@ -32,7 +32,7 @@ func New(ctx context.Context, sess *config.Session) (*Agent, error) {
 	var err error
 	switch sess.Protocol {
 	case "ssh":
-		conn, err = transport.DialSSH(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts, sess.SSHLegacy)
+		conn, err = transport.DialSSHWithPrelude(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts, prof.LoginPrelude, sess.SSHLegacy)
 	case "telnet":
 		conn, err = transport.DialTelnet(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts)
 	default:
