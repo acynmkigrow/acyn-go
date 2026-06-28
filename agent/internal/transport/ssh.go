@@ -2,30 +2,63 @@ package transport
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 )
 
+// ErrConsoleHung is returned when the device reports an unresponsive console
+// (most often RouterOS' "Console does not respond. Restart console?" prompt)
+// or when a command times out and Ctrl-C fails to recover the session. The
+// WS layer treats it as fatal and closes the underlying connection.
+var ErrConsoleHung = errors.New("device console hung; session must be reopened")
+
+// defaultCmdTimeout is the per-command read budget. Most CLI commands return
+// within a second; 8s leaves room for slower commands like "display version"
+// on a busy OLT while still failing fast on a dead session.
+const defaultCmdTimeout = 8 * time.Second
+
+// ansiRE strips CSI escape sequences (colour, line clears, cursor moves).
+// Covers ESC[…<letter>, ESC]…BEL, and lone ESC[K that some MikroTik builds
+// emit while echoing.
+var ansiRE = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07`)
+
+// stripANSI removes ANSI escapes and bare carriage returns so prompt
+// detection works on the visible characters only.
+func stripANSI(s string) string {
+	s = ansiRE.ReplaceAllString(s, "")
+	s = strings.ReplaceAll(s, "\r", "")
+	return s
+}
+
 // SSHConn implements Conn over a persistent SSH "shell" session, which is
 // what Huawei OLT/HG CLIs expect (they refuse Exec mode).
 type SSHConn struct {
-	client  *ssh.Client
-	sess    *ssh.Session
-	stdin   io.WriteCloser
-	stdout  io.Reader
-	prompts []string
+	client     *ssh.Client
+	sess       *ssh.Session
+	stdin      io.WriteCloser
+	stdout     io.Reader
+	prompts    []string
+	cmdTimeout time.Duration
 }
 
-// DialSSH opens a password-authed SSH connection and starts an interactive shell.
+// DialSSH opens a password-authed SSH connection and starts an interactive
+// shell. After the initial prompt is detected the prelude commands are run
+// silently to disable paging / colour / line wrap.
 func DialSSH(host string, port int, username, password string, prompts []string, legacy bool) (*SSHConn, error) {
+	return DialSSHWithPrelude(host, port, username, password, prompts, nil, legacy)
+}
+
+// DialSSHWithPrelude is DialSSH plus a silent post-login prelude.
+func DialSSHWithPrelude(host string, port int, username, password string, prompts []string, prelude []string, legacy bool) (*SSHConn, error) {
 	cfg := &ssh.ClientConfig{
-		User: username,
-		Auth: []ssh.AuthMethod{ssh.Password(password)},
-		// Huawei devices use self-signed host keys; accept any.
+		User:            username,
+		Auth:            []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         10 * time.Second,
 	}
@@ -50,12 +83,18 @@ func DialSSH(host string, port int, username, password string, prompts []string,
 		client.Close()
 		return nil, err
 	}
+	// Aggressively disable line discipline features that produce echo / ANSI
+	// garbage. Width is wide enough that even MikroTik's long add-lines stay
+	// on a single physical row, which is what kept biting us.
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          0,
+		ssh.ECHOCTL:       0,
+		ssh.ICANON:        0,
+		ssh.ISIG:          0,
 		ssh.TTY_OP_ISPEED: 14400,
 		ssh.TTY_OP_OSPEED: 14400,
 	}
-	if err := sess.RequestPty("vt100", 80, 200, modes); err != nil {
+	if err := sess.RequestPty("vt100", 100, 240, modes); err != nil {
 		sess.Close()
 		client.Close()
 		return nil, err
@@ -67,39 +106,136 @@ func DialSSH(host string, port int, username, password string, prompts []string,
 		client.Close()
 		return nil, err
 	}
-	c := &SSHConn{client: client, sess: sess, stdin: stdin, stdout: stdout, prompts: prompts}
-	// Wait for the initial prompt.
-	_, _ = c.readUntilAny(prompts, 5*time.Second)
+	c := &SSHConn{
+		client:     client,
+		sess:       sess,
+		stdin:      stdin,
+		stdout:     stdout,
+		prompts:    prompts,
+		cmdTimeout: defaultCmdTimeout,
+	}
+	// Wait for the initial prompt before issuing anything.
+	_, _ = c.readUntilPrompt(5 * time.Second)
+	// Run the silent prelude; ignore errors — these are best-effort tweaks.
+	for _, cmd := range prelude {
+		_, _ = c.Send(cmd)
+	}
 	return c, nil
 }
 
-// Send writes a command and reads until the device prompt or a sane timeout.
+// Send writes a command and reads until the device prompt or the per-command
+// timeout. On timeout it sends Ctrl-C, drains the buffer, and returns an
+// error so the caller stops the batch instead of cascading onto a dead
+// session. If the device emits the RouterOS "console hung" dialog it answers
+// "n" and returns ErrConsoleHung.
 func (c *SSHConn) Send(cmd string) (string, error) {
-	if _, err := io.WriteString(c.stdin, cmd+"\n"); err != nil {
+	if _, err := io.WriteString(c.stdin, cmd+"\r"); err != nil {
 		return "", err
 	}
-	time.Sleep(300 * time.Millisecond)
-	return c.readUntilAny(c.prompts, 5*time.Second)
+	out, err := c.readUntilPrompt(c.cmdTimeout)
+	if err == nil {
+		return out, nil
+	}
+	if errors.Is(err, ErrConsoleHung) {
+		return out, err
+	}
+	// Timeout / unknown read state: try to clear the buffer with Ctrl-C so
+	// the next command lands on a fresh prompt, otherwise surface the error.
+	_, _ = io.WriteString(c.stdin, "\x03")
+	drained, derr := c.readUntilPrompt(2 * time.Second)
+	if derr != nil {
+		return out + drained, fmt.Errorf("%w (recovery failed: %v)", ErrConsoleHung, derr)
+	}
+	return out + drained, fmt.Errorf("command timed out after %s", c.cmdTimeout)
 }
 
-func (c *SSHConn) readUntilAny(needles []string, timeout time.Duration) (string, error) {
+// readUntilPrompt reads from stdout until any configured prompt appears at
+// the tail of the visible (ANSI-stripped) buffer or until the deadline
+// expires. Returns ErrConsoleHung if the device prints the RouterOS
+// "Console does not respond" dialog and we cannot recover the prompt.
+func (c *SSHConn) readUntilPrompt(timeout time.Duration) (string, error) {
 	deadline := time.Now().Add(timeout)
 	buf := make([]byte, 4096)
-	var out bytes.Buffer
+	var raw bytes.Buffer
 	for time.Now().Before(deadline) {
-		n, _ := c.stdout.Read(buf)
+		// Best-effort short read. We rely on small sleeps between iterations
+		// because golang.org/x/crypto/ssh exposes no per-read deadline.
+		n, rerr := c.stdout.Read(buf)
 		if n > 0 {
-			out.Write(buf[:n])
-			s := out.String()
-			for _, p := range needles {
-				if strings.Contains(s, p) {
-					return s, nil
+			raw.Write(buf[:n])
+			visible := stripANSI(raw.String())
+			// RouterOS may pop a confirmation prompt mid-stream — answer "n"
+			// so the session does not die under us.
+			if idx := strings.Index(visible, "Console does not respond"); idx >= 0 {
+				_, _ = io.WriteString(c.stdin, "n\r")
+				// Give the device a beat to recover, then try one more prompt
+				// read on the remaining budget.
+				time.Sleep(150 * time.Millisecond)
+				if recovered, ok := awaitPromptTail(c, deadline); ok {
+					return visible + recovered, nil
 				}
+				return visible, ErrConsoleHung
+			}
+			if tail, ok := matchPromptTail(visible, c.prompts); ok {
+				return tail, nil
 			}
 		}
-		time.Sleep(50 * time.Millisecond)
+		if rerr != nil {
+			if rerr == io.EOF {
+				return raw.String(), io.EOF
+			}
+			return raw.String(), rerr
+		}
+		time.Sleep(40 * time.Millisecond)
 	}
-	return out.String(), nil
+	return raw.String(), fmt.Errorf("prompt not seen within %s", timeout)
+}
+
+// matchPromptTail returns the visible buffer when any prompt substring is
+// present on (or very near) the last non-empty line. Anchoring to the tail
+// stops us from declaring success when the prompt appears earlier inside an
+// echoed command (e.g. an embedded "#").
+func matchPromptTail(visible string, prompts []string) (string, bool) {
+	if visible == "" {
+		return "", false
+	}
+	// Inspect the last ~120 chars; that is plenty for any prompt string we
+	// care about and keeps the scan cheap.
+	tail := visible
+	if len(tail) > 240 {
+		tail = tail[len(tail)-240:]
+	}
+	for _, p := range prompts {
+		if p == "" {
+			continue
+		}
+		if strings.Contains(tail, p) {
+			return visible, true
+		}
+	}
+	return "", false
+}
+
+// awaitPromptTail keeps reading until the deadline looking for a prompt
+// after we sent recovery input. Returns the freshly-read text and ok=true on
+// success.
+func awaitPromptTail(c *SSHConn, deadline time.Time) (string, bool) {
+	buf := make([]byte, 4096)
+	var extra bytes.Buffer
+	for time.Now().Before(deadline) {
+		n, err := c.stdout.Read(buf)
+		if n > 0 {
+			extra.Write(buf[:n])
+			if _, ok := matchPromptTail(stripANSI(extra.String()), c.prompts); ok {
+				return extra.String(), true
+			}
+		}
+		if err != nil {
+			return extra.String(), false
+		}
+		time.Sleep(40 * time.Millisecond)
+	}
+	return extra.String(), false
 }
 
 // Close shuts down the SSH session and underlying client.
