@@ -5,7 +5,9 @@ import type { Family } from "@/lib/huawei-prompts";
 export type ExecMessage =
   | { type: "device"; vendor: string; model: string; family: AgentInfo["family"]; prompt: string; facts?: Record<string, string> }
   | { type: "output"; id: string; line: string; stream: "stdout" | "stderr" }
-  | { type: "done"; id: string; ok: boolean; durationMs: number };
+  | { type: "done"; id: string; ok: boolean; durationMs: number }
+  | { type: "device-lost"; line?: string; stream?: "stderr" };
+
 
 
 export type SocketStatus = "idle" | "pairing" | "connected" | "error";
@@ -58,6 +60,8 @@ export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
           const msg = JSON.parse(e.data) as ExecMessage;
           if (msg.type === "device") {
             setDevice({ vendor: msg.vendor, model: msg.model, family: msg.family, prompt: msg.prompt, facts: msg.facts });
+          } else if (msg.type === "device-lost") {
+            setDevice(null);
           }
 
           onMessageRef.current(msg);
@@ -65,6 +69,7 @@ export function useAgentSocket(onMessage: (m: ExecMessage) => void) {
           /* ignore */
         }
       };
+
       ws.onopen = () => setStatus("connected");
       ws.onerror = () => setStatus("error");
       ws.onclose = () => {
