@@ -13,7 +13,7 @@ import (
 )
 
 // version is overridden at build time via -ldflags "-X main.version=..."
-var version = "v1.0.9"
+var version = "v1.0.10"
 
 func main() {
 	// Subcommand: acyn-go serve [--lan] [--port N]

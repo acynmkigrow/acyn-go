@@ -9,7 +9,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -23,6 +25,7 @@ import (
 
 	"nhooyr.io/websocket"
 )
+
 
 type DeviceInfo struct {
 	Vendor string            `json:"vendor"`
@@ -271,7 +274,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	var conn transport.Conn
 	var err error
 	if strings.EqualFold(req.Protocol, "ssh") {
-		conn, err = transport.DialSSH(req.IP, req.Port, req.Username, req.Password, prof.Prompts, req.SSHLegacy)
+		conn, err = transport.DialSSHWithPrelude(req.IP, req.Port, req.Username, req.Password, prof.Prompts, prof.LoginPrelude, req.SSHLegacy)
 	} else {
 		conn, err = transport.DialTelnet(req.IP, req.Port, req.Username, req.Password, prof.Prompts)
 	}
@@ -279,6 +282,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		writeJSONResp(w, http.StatusBadGateway, connectResp{Error: err.Error()})
 		return
 	}
+
 
 	vendor := "huawei"
 	switch req.Family {
@@ -434,6 +438,12 @@ func (s *Server) runBatch(ctx context.Context, c *websocket.Conn, msg execMsg) {
 		}
 		writeWS(ctx, c, outMsg{Type: "output", ID: msg.ID, Line: line, Stream: stream})
 		if err != nil {
+			// Fatal session error: drop the connection so the user has to
+			// reconnect rather than firing more commands at a dead shell.
+			if errors.Is(err, transport.ErrConsoleHung) || errors.Is(err, io.EOF) {
+				s.swapDevice(nil, DeviceInfo{})
+				writeWS(ctx, c, outMsg{Type: "device-lost", Line: "session dropped — please reconnect", Stream: "stderr"})
+			}
 			break
 		}
 	}
@@ -447,6 +457,7 @@ func (s *Server) runBatch(ctx context.Context, c *websocket.Conn, msg execMsg) {
 	}
 	writeWS(ctx, c, outMsg{Type: "done", ID: msg.ID, OK: ok, DurMs: time.Since(start).Milliseconds()})
 }
+
 
 func writeWS(ctx context.Context, c *websocket.Conn, m outMsg) {
 	if buf, err := json.Marshal(m); err == nil {
