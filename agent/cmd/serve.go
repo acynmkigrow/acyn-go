@@ -31,10 +31,11 @@ func RunServe(ctx context.Context, sess *config.Session, host string, port int, 
 		var err error
 		switch sess.Protocol {
 		case "ssh":
-			conn, err = transport.DialSSH(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts, sess.SSHLegacy)
+			conn, err = transport.DialSSHWithPrelude(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts, prof.LoginPrelude, sess.SSHLegacy)
 		default:
 			conn, err = transport.DialTelnet(sess.IP, sess.Port, sess.Username, sess.Password, prof.Prompts)
 		}
+
 		if err != nil {
 			return fmt.Errorf("device connect: %w", err)
 		}
