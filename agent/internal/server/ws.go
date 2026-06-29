@@ -274,10 +274,22 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	var conn transport.Conn
 	var err error
 	if strings.EqualFold(req.Protocol, "ssh") {
-		conn, err = transport.DialSSHWithPrelude(req.IP, req.Port, req.Username, req.Password, prof.Prompts, prof.LoginPrelude, req.SSHLegacy)
+		var re *regexp.Regexp
+		if prof.PromptRegex != "" {
+			re, _ = regexp.Compile(prof.PromptRegex)
+		}
+		conn, err = transport.DialSSHWithOptions(req.IP, req.Port, req.Username, req.Password, prof.Prompts, transport.SSHOptions{
+			Prelude:        prof.LoginPrelude,
+			Legacy:         req.SSHLegacy,
+			UsernameSuffix: prof.UsernameSuffix,
+			PromptRegex:    re,
+			OnConnect:      prof.OnConnect,
+			OnCommit:       prof.OnCommit,
+		})
 	} else {
 		conn, err = transport.DialTelnet(req.IP, req.Port, req.Username, req.Password, prof.Prompts)
 	}
+
 	if err != nil {
 		writeJSONResp(w, http.StatusBadGateway, connectResp{Error: err.Error()})
 		return
