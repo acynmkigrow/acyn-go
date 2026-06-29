@@ -80,12 +80,12 @@ func DialSSHWithOptions(host string, port int, username, password string, prompt
 	loginUser := username + opts.UsernameSuffix
 
 	cfg := &ssh.ClientConfig{
-		User:            username,
+		User:            loginUser,
 		Auth:            []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         10 * time.Second,
 	}
-	if legacy {
+	if opts.Legacy {
 		cfg.Config = ssh.Config{
 			KeyExchanges: []string{
 				"diffie-hellman-group1-sha1",
@@ -117,7 +117,7 @@ func DialSSHWithOptions(host string, port int, username, password string, prompt
 		ssh.TTY_OP_ISPEED: 14400,
 		ssh.TTY_OP_OSPEED: 14400,
 	}
-	if err := sess.RequestPty("vt100", 100, 240, modes); err != nil {
+	if err := sess.RequestPty("vt100", 100, 500, modes); err != nil {
 		sess.Close()
 		client.Close()
 		return nil, err
@@ -135,16 +135,26 @@ func DialSSHWithOptions(host string, port int, username, password string, prompt
 		stdin:      stdin,
 		stdout:     stdout,
 		prompts:    prompts,
+		promptRE:   opts.PromptRegex,
 		cmdTimeout: defaultCmdTimeout,
+		onCommit:   opts.OnCommit,
 	}
 	// Wait for the initial prompt before issuing anything.
 	_, _ = c.readUntilPrompt(5 * time.Second)
+	// Fire the OnConnect bytes (RouterOS Safe Mode: 0x18). We send the bytes
+	// directly — no \r — and re-read to the next prompt, which on success
+	// will include the "<SAFE>" marker that PromptRegex tolerates.
+	if len(opts.OnConnect) > 0 {
+		_, _ = c.stdin.Write(opts.OnConnect)
+		_, _ = c.readUntilPrompt(2 * time.Second)
+	}
 	// Run the silent prelude; ignore errors — these are best-effort tweaks.
-	for _, cmd := range prelude {
+	for _, cmd := range opts.Prelude {
 		_, _ = c.Send(cmd)
 	}
 	return c, nil
 }
+
 
 // Send writes a command and reads until the device prompt or the per-command
 // timeout. On timeout it sends Ctrl-C, drains the buffer, and returns an
