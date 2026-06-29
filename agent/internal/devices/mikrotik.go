@@ -2,15 +2,24 @@ package devices
 
 func init() {
 	Register("mikrotik", Profile{
-		// RouterOS shell prompts: "[admin@MikroTik] > " or "<name>] > "
-		Prompts: []string{"] > ", "] >"},
-		SaveCmd: "", // RouterOS auto-persists; no explicit save command
+		// RouterOS shell prompts: "[admin@MikroTik] > " or "[admin@x] <SAFE> > ".
+		Prompts:     []string{"] > ", "] >"},
+		PromptRegex: `\][^\n]{0,60}>\s*$`,
+		SaveCmd:     "", // RouterOS auto-persists; no explicit save command
+		// "+ctw500w" disables colours (c), terminal-cap auto-detection (t),
+		// and sets a 500-col width (w500w) so commands never wrap. This is
+		// the single most effective fix for prompt-desync on RouterOS.
+		UsernameSuffix: "+ctw500w",
+		// Ctrl-X toggles Safe Mode on connect; if the agent dies or a
+		// command fails fatally we drop the socket and RouterOS reverts.
+		OnConnect: []byte{0x18},
+		// Ctrl-X again on graceful close commits the Safe-Mode session.
+		OnCommit: []byte{0x18},
 		LoginPrelude: []string{
-			// Disable paging, widen the screen, and turn off colour so ANSI
-			// escapes don't poison our prompt detector.
+			// Belt-and-braces in case ctw500w isn't honoured by an old build.
 			"/console screen-number-of-lines rows=100",
-			"/console screen-number-of-columns columns=200",
 		},
+
 		Hints: `Target: MikroTik RouterOS (v6/v7) — CCR, CRS (in RouterOS mode), RB, hAP, cAP, wAP, Chateau.
 - One statement per line. NEVER chain with ';' — the agent runs one command at a time and waits for the prompt. NO 'enable', NO 'config', NO 'save' — RouterOS auto-persists.
 - Hierarchical paths start with '/': '/system identity set name=...', '/ip address add ...'.
