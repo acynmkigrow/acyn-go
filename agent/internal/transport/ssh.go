@@ -163,6 +163,7 @@ func DialSSHWithOptions(host string, port int, username, password string, prompt
 // "n" and returns ErrConsoleHung.
 func (c *SSHConn) Send(cmd string) (string, error) {
 	if _, err := io.WriteString(c.stdin, cmd+"\r"); err != nil {
+		c.failed = true
 		return "", err
 	}
 	out, err := c.readUntilPrompt(c.cmdTimeout)
@@ -170,6 +171,7 @@ func (c *SSHConn) Send(cmd string) (string, error) {
 		return out, nil
 	}
 	if errors.Is(err, ErrConsoleHung) {
+		c.failed = true
 		return out, err
 	}
 	// Timeout / unknown read state: try to clear the buffer with Ctrl-C so
@@ -177,10 +179,12 @@ func (c *SSHConn) Send(cmd string) (string, error) {
 	_, _ = io.WriteString(c.stdin, "\x03")
 	drained, derr := c.readUntilPrompt(2 * time.Second)
 	if derr != nil {
+		c.failed = true
 		return out + drained, fmt.Errorf("%w (recovery failed: %v)", ErrConsoleHung, derr)
 	}
 	return out + drained, fmt.Errorf("command timed out after %s", c.cmdTimeout)
 }
+
 
 // readUntilPrompt reads from stdout until any configured prompt appears at
 // the tail of the visible (ANSI-stripped) buffer or until the deadline
