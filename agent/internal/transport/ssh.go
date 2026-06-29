@@ -44,25 +44,48 @@ type SSHConn struct {
 	stdin      io.WriteCloser
 	stdout     io.Reader
 	prompts    []string
+	promptRE   *regexp.Regexp
 	cmdTimeout time.Duration
+	onCommit   []byte
+	failed     bool // set on fatal Send error so Close skips OnCommit
+}
+
+// SSHOptions tunes transport behaviour per device family. All fields are
+// optional; zero values preserve the legacy DialSSH behaviour.
+type SSHOptions struct {
+	Prelude        []string
+	Legacy         bool
+	UsernameSuffix string         // appended to the login username (e.g. "+ctw500w")
+	PromptRegex    *regexp.Regexp // anchored regex matched against the buffer tail
+	OnConnect      []byte         // raw bytes sent after the initial prompt
+	OnCommit       []byte         // raw bytes sent on graceful Close
 }
 
 // DialSSH opens a password-authed SSH connection and starts an interactive
 // shell. After the initial prompt is detected the prelude commands are run
 // silently to disable paging / colour / line wrap.
 func DialSSH(host string, port int, username, password string, prompts []string, legacy bool) (*SSHConn, error) {
-	return DialSSHWithPrelude(host, port, username, password, prompts, nil, legacy)
+	return DialSSHWithOptions(host, port, username, password, prompts, SSHOptions{Legacy: legacy})
 }
 
 // DialSSHWithPrelude is DialSSH plus a silent post-login prelude.
 func DialSSHWithPrelude(host string, port int, username, password string, prompts []string, prelude []string, legacy bool) (*SSHConn, error) {
+	return DialSSHWithOptions(host, port, username, password, prompts, SSHOptions{Prelude: prelude, Legacy: legacy})
+}
+
+// DialSSHWithOptions is the canonical entry point. It honours UsernameSuffix
+// (MikroTik's "+ctw500w"), PromptRegex (anchored tail match), and the
+// OnConnect / OnCommit byte streams used to drive RouterOS Safe Mode.
+func DialSSHWithOptions(host string, port int, username, password string, prompts []string, opts SSHOptions) (*SSHConn, error) {
+	loginUser := username + opts.UsernameSuffix
+
 	cfg := &ssh.ClientConfig{
-		User:            username,
+		User:            loginUser,
 		Auth:            []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         10 * time.Second,
 	}
-	if legacy {
+	if opts.Legacy {
 		cfg.Config = ssh.Config{
 			KeyExchanges: []string{
 				"diffie-hellman-group1-sha1",
@@ -94,7 +117,7 @@ func DialSSHWithPrelude(host string, port int, username, password string, prompt
 		ssh.TTY_OP_ISPEED: 14400,
 		ssh.TTY_OP_OSPEED: 14400,
 	}
-	if err := sess.RequestPty("vt100", 100, 240, modes); err != nil {
+	if err := sess.RequestPty("vt100", 100, 500, modes); err != nil {
 		sess.Close()
 		client.Close()
 		return nil, err
@@ -112,16 +135,26 @@ func DialSSHWithPrelude(host string, port int, username, password string, prompt
 		stdin:      stdin,
 		stdout:     stdout,
 		prompts:    prompts,
+		promptRE:   opts.PromptRegex,
 		cmdTimeout: defaultCmdTimeout,
+		onCommit:   opts.OnCommit,
 	}
 	// Wait for the initial prompt before issuing anything.
 	_, _ = c.readUntilPrompt(5 * time.Second)
+	// Fire the OnConnect bytes (RouterOS Safe Mode: 0x18). We send the bytes
+	// directly — no \r — and re-read to the next prompt, which on success
+	// will include the "<SAFE>" marker that PromptRegex tolerates.
+	if len(opts.OnConnect) > 0 {
+		_, _ = c.stdin.Write(opts.OnConnect)
+		_, _ = c.readUntilPrompt(2 * time.Second)
+	}
 	// Run the silent prelude; ignore errors — these are best-effort tweaks.
-	for _, cmd := range prelude {
+	for _, cmd := range opts.Prelude {
 		_, _ = c.Send(cmd)
 	}
 	return c, nil
 }
+
 
 // Send writes a command and reads until the device prompt or the per-command
 // timeout. On timeout it sends Ctrl-C, drains the buffer, and returns an
@@ -130,6 +163,7 @@ func DialSSHWithPrelude(host string, port int, username, password string, prompt
 // "n" and returns ErrConsoleHung.
 func (c *SSHConn) Send(cmd string) (string, error) {
 	if _, err := io.WriteString(c.stdin, cmd+"\r"); err != nil {
+		c.failed = true
 		return "", err
 	}
 	out, err := c.readUntilPrompt(c.cmdTimeout)
@@ -137,6 +171,7 @@ func (c *SSHConn) Send(cmd string) (string, error) {
 		return out, nil
 	}
 	if errors.Is(err, ErrConsoleHung) {
+		c.failed = true
 		return out, err
 	}
 	// Timeout / unknown read state: try to clear the buffer with Ctrl-C so
@@ -144,10 +179,12 @@ func (c *SSHConn) Send(cmd string) (string, error) {
 	_, _ = io.WriteString(c.stdin, "\x03")
 	drained, derr := c.readUntilPrompt(2 * time.Second)
 	if derr != nil {
+		c.failed = true
 		return out + drained, fmt.Errorf("%w (recovery failed: %v)", ErrConsoleHung, derr)
 	}
 	return out + drained, fmt.Errorf("command timed out after %s", c.cmdTimeout)
 }
+
 
 // readUntilPrompt reads from stdout until any configured prompt appears at
 // the tail of the visible (ANSI-stripped) buffer or until the deadline
@@ -176,9 +213,10 @@ func (c *SSHConn) readUntilPrompt(timeout time.Duration) (string, error) {
 				}
 				return visible, ErrConsoleHung
 			}
-			if tail, ok := matchPromptTail(visible, c.prompts); ok {
+			if tail, ok := c.matchPrompt(visible); ok {
 				return tail, nil
 			}
+
 		}
 		if rerr != nil {
 			if rerr == io.EOF {
@@ -191,21 +229,25 @@ func (c *SSHConn) readUntilPrompt(timeout time.Duration) (string, error) {
 	return raw.String(), fmt.Errorf("prompt not seen within %s", timeout)
 }
 
-// matchPromptTail returns the visible buffer when any prompt substring is
-// present on (or very near) the last non-empty line. Anchoring to the tail
-// stops us from declaring success when the prompt appears earlier inside an
-// echoed command (e.g. an embedded "#").
-func matchPromptTail(visible string, prompts []string) (string, bool) {
+// matchPrompt returns the visible buffer when the configured prompt regex
+// matches the tail or any prompt substring is present near the end. Anchoring
+// to the tail prevents false positives from echoed commands that happen to
+// contain a "#" or ">".
+func (c *SSHConn) matchPrompt(visible string) (string, bool) {
 	if visible == "" {
 		return "", false
 	}
-	// Inspect the last ~120 chars; that is plenty for any prompt string we
-	// care about and keeps the scan cheap.
 	tail := visible
-	if len(tail) > 240 {
-		tail = tail[len(tail)-240:]
+	if len(tail) > 480 {
+		tail = tail[len(tail)-480:]
 	}
-	for _, p := range prompts {
+	if c.promptRE != nil {
+		if c.promptRE.MatchString(tail) {
+			return visible, true
+		}
+		return "", false
+	}
+	for _, p := range c.prompts {
 		if p == "" {
 			continue
 		}
@@ -226,7 +268,7 @@ func awaitPromptTail(c *SSHConn, deadline time.Time) (string, bool) {
 		n, err := c.stdout.Read(buf)
 		if n > 0 {
 			extra.Write(buf[:n])
-			if _, ok := matchPromptTail(stripANSI(extra.String()), c.prompts); ok {
+			if _, ok := c.matchPrompt(stripANSI(extra.String())); ok {
 				return extra.String(), true
 			}
 		}
@@ -238,8 +280,16 @@ func awaitPromptTail(c *SSHConn, deadline time.Time) (string, bool) {
 	return extra.String(), false
 }
 
-// Close shuts down the SSH session and underlying client.
+// Close shuts down the SSH session and underlying client. If OnCommit is set
+// and the session has not been marked failed, the commit bytes are sent
+// first (RouterOS Safe Mode: Ctrl-X commits). On a failed session we skip
+// the commit so dropping the socket triggers an automatic device rollback.
 func (c *SSHConn) Close() error {
+	if !c.failed && len(c.onCommit) > 0 && c.stdin != nil {
+		_, _ = c.stdin.Write(c.onCommit)
+		time.Sleep(150 * time.Millisecond)
+	}
 	_ = c.sess.Close()
 	return c.client.Close()
 }
+
