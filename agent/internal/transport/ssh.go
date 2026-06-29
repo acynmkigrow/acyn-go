@@ -229,21 +229,25 @@ func (c *SSHConn) readUntilPrompt(timeout time.Duration) (string, error) {
 	return raw.String(), fmt.Errorf("prompt not seen within %s", timeout)
 }
 
-// matchPromptTail returns the visible buffer when any prompt substring is
-// present on (or very near) the last non-empty line. Anchoring to the tail
-// stops us from declaring success when the prompt appears earlier inside an
-// echoed command (e.g. an embedded "#").
-func matchPromptTail(visible string, prompts []string) (string, bool) {
+// matchPrompt returns the visible buffer when the configured prompt regex
+// matches the tail or any prompt substring is present near the end. Anchoring
+// to the tail prevents false positives from echoed commands that happen to
+// contain a "#" or ">".
+func (c *SSHConn) matchPrompt(visible string) (string, bool) {
 	if visible == "" {
 		return "", false
 	}
-	// Inspect the last ~120 chars; that is plenty for any prompt string we
-	// care about and keeps the scan cheap.
 	tail := visible
-	if len(tail) > 240 {
-		tail = tail[len(tail)-240:]
+	if len(tail) > 480 {
+		tail = tail[len(tail)-480:]
 	}
-	for _, p := range prompts {
+	if c.promptRE != nil {
+		if c.promptRE.MatchString(tail) {
+			return visible, true
+		}
+		return "", false
+	}
+	for _, p := range c.prompts {
 		if p == "" {
 			continue
 		}
@@ -264,7 +268,7 @@ func awaitPromptTail(c *SSHConn, deadline time.Time) (string, bool) {
 		n, err := c.stdout.Read(buf)
 		if n > 0 {
 			extra.Write(buf[:n])
-			if _, ok := matchPromptTail(stripANSI(extra.String()), c.prompts); ok {
+			if _, ok := c.matchPrompt(stripANSI(extra.String())); ok {
 				return extra.String(), true
 			}
 		}
@@ -276,8 +280,16 @@ func awaitPromptTail(c *SSHConn, deadline time.Time) (string, bool) {
 	return extra.String(), false
 }
 
-// Close shuts down the SSH session and underlying client.
+// Close shuts down the SSH session and underlying client. If OnCommit is set
+// and the session has not been marked failed, the commit bytes are sent
+// first (RouterOS Safe Mode: Ctrl-X commits). On a failed session we skip
+// the commit so dropping the socket triggers an automatic device rollback.
 func (c *SSHConn) Close() error {
+	if !c.failed && len(c.onCommit) > 0 && c.stdin != nil {
+		_, _ = c.stdin.Write(c.onCommit)
+		time.Sleep(150 * time.Millisecond)
+	}
 	_ = c.sess.Close()
 	return c.client.Close()
 }
+
