@@ -44,18 +44,41 @@ type SSHConn struct {
 	stdin      io.WriteCloser
 	stdout     io.Reader
 	prompts    []string
+	promptRE   *regexp.Regexp
 	cmdTimeout time.Duration
+	onCommit   []byte
+	failed     bool // set on fatal Send error so Close skips OnCommit
+}
+
+// SSHOptions tunes transport behaviour per device family. All fields are
+// optional; zero values preserve the legacy DialSSH behaviour.
+type SSHOptions struct {
+	Prelude        []string
+	Legacy         bool
+	UsernameSuffix string         // appended to the login username (e.g. "+ctw500w")
+	PromptRegex    *regexp.Regexp // anchored regex matched against the buffer tail
+	OnConnect      []byte         // raw bytes sent after the initial prompt
+	OnCommit       []byte         // raw bytes sent on graceful Close
 }
 
 // DialSSH opens a password-authed SSH connection and starts an interactive
 // shell. After the initial prompt is detected the prelude commands are run
 // silently to disable paging / colour / line wrap.
 func DialSSH(host string, port int, username, password string, prompts []string, legacy bool) (*SSHConn, error) {
-	return DialSSHWithPrelude(host, port, username, password, prompts, nil, legacy)
+	return DialSSHWithOptions(host, port, username, password, prompts, SSHOptions{Legacy: legacy})
 }
 
 // DialSSHWithPrelude is DialSSH plus a silent post-login prelude.
 func DialSSHWithPrelude(host string, port int, username, password string, prompts []string, prelude []string, legacy bool) (*SSHConn, error) {
+	return DialSSHWithOptions(host, port, username, password, prompts, SSHOptions{Prelude: prelude, Legacy: legacy})
+}
+
+// DialSSHWithOptions is the canonical entry point. It honours UsernameSuffix
+// (MikroTik's "+ctw500w"), PromptRegex (anchored tail match), and the
+// OnConnect / OnCommit byte streams used to drive RouterOS Safe Mode.
+func DialSSHWithOptions(host string, port int, username, password string, prompts []string, opts SSHOptions) (*SSHConn, error) {
+	loginUser := username + opts.UsernameSuffix
+
 	cfg := &ssh.ClientConfig{
 		User:            username,
 		Auth:            []ssh.AuthMethod{ssh.Password(password)},
