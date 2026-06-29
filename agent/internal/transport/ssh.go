@@ -213,9 +213,10 @@ func (c *SSHConn) readUntilPrompt(timeout time.Duration) (string, error) {
 				}
 				return visible, ErrConsoleHung
 			}
-			if tail, ok := matchPromptTail(visible, c.prompts); ok {
+			if tail, ok := c.matchPrompt(visible); ok {
 				return tail, nil
 			}
+
 		}
 		if rerr != nil {
 			if rerr == io.EOF {
